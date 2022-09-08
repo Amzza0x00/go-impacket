@@ -7,9 +7,10 @@ Go-Impacket
 示例
 -------
 ```shell
-psexec 172.20.10.5 Administrator DESKTOP-3397AU79 32ed87bdb5fdc5e9cba88547376818d4 test.exe go-impacket/test/
+psexec -target 172.20.10.5 -user administrator -pass 123456 -file testt.exe -path ./test/ -service testzz
+psexec -target 172.20.10.5 -user administrator -hash 32ed87bdb5fdc5e9cba88547376818d4 -file testt.exe -path ./test/ -service testzz
 ```
 参考
 -------
-基于以下代码修改，并修复pass the hash不成功问题  
+基于以下代码修改  
 **smb**: https://github.com/stacktitan/smb
