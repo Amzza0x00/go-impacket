@@ -364,7 +364,7 @@ func (s *Session) SMB2NegotiateProtocol() error {
 }
 
 // SMB2连接封装
-func SMB2NewSession(opt Options, debug bool) (s *Session, err error) {
+func NewSession(opt Options, debug bool) (s *Session, err error) {
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", opt.Host, opt.Port))
 	if err != nil {
 		return
@@ -403,7 +403,7 @@ func (s *Session) send(req interface{}) (res []byte, err error) {
 		s.Debug("", err)
 		return
 	}
-	s.Debug(hex.Dump(append(b.Bytes(), buf...)), nil)
+	s.Debug("Raw:\n"+hex.Dump(append(b.Bytes(), buf...)), nil)
 	rw := bufio.NewReadWriter(bufio.NewReader(s.conn), bufio.NewWriter(s.conn))
 	if _, err = rw.Write(append(b.Bytes(), buf...)); err != nil {
 		s.Debug("", err)

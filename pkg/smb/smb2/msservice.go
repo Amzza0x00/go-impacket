@@ -514,13 +514,13 @@ func NewSMB2RCloseServiceHandleResponse() RCloseServiceHandleResponseStruct {
 }
 
 // 服务安装
-func (s *Session) ServiceInstall(servicename string, uploadPathFile string) error {
+func (s *Session) ServiceInstall(servicename string, uploadPathFile string) (service string, err error) {
 	var fileId []byte
 	// 建立ipc$管道
 	treeId, err := s.SMB2TreeConnect("IPC$")
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	r := SMB2CreateRequestStruct{
 		OpLock:             SMB2_OPLOCK_LEVEL_NONE,
@@ -534,26 +534,26 @@ func (s *Session) ServiceInstall(servicename string, uploadPathFile string) erro
 	fileId, err = s.SMB2CreateRequest(treeId, "svcctl", r)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	// 绑定svcctl函数
 	err = s.SMB2PDUBind(treeId, fileId, ms.NTSVCS_UUID, ms.NTSVCS_VERSION)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	req := s.NewSMB2OpenSCManagerWRequest(treeId, fileId)
 	_, err = s.send(req)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	s.Debug("Read svcctl response", nil)
 	req1 := s.NewSMB2ReadRequest(treeId, fileId)
 	buf, err1 := s.send(req1)
 	if err1 != nil {
 		s.Debug("", err1)
-		return err1
+		return "", err
 	}
 	res := NewSMB2OpenSCManagerWResponse()
 	s.Debug("Unmarshalling OpenSCManagerW response", nil)
@@ -561,7 +561,7 @@ func (s *Session) ServiceInstall(servicename string, uploadPathFile string) erro
 		s.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
 	if res.SMB2Header.Status != ms.STATUS_SUCCESS {
-		return errors.New("Failed to OpenSCManagerW service active to " + ms.StatusMap[res.SMB2Header.Status])
+		return "", errors.New("Failed to OpenSCManagerW service active to " + ms.StatusMap[res.SMB2Header.Status])
 	}
 	s.Debug("Completed OpenSCManagerW ", nil)
 	// 获取OpenSCManagerW句柄
@@ -572,14 +572,14 @@ func (s *Session) ServiceInstall(servicename string, uploadPathFile string) erro
 	buf, err = s.send(req2)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	s.Debug("Read svcctl OpenServiceW response", nil)
 	reqRead := s.NewSMB2ReadRequest(treeId, fileId)
 	buf, err = s.send(reqRead)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	res1 := NewSMB2ROpenServiceWResponse()
 	s.Debug("Unmarshalling ROpenServiceW response", nil)
@@ -597,14 +597,14 @@ func (s *Session) ServiceInstall(servicename string, uploadPathFile string) erro
 	buf, err = s.send(req3)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	s.Debug("Read svcctl RCreateServiceW response", nil)
 	reqRead = s.NewSMB2ReadRequest(treeId, fileId)
 	buf, err = s.send(reqRead)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	res2 := NewSMB2RCreateServiceWResponse()
 	s.Debug("Unmarshalling RCreateServiceW response", nil)
@@ -621,14 +621,14 @@ func (s *Session) ServiceInstall(servicename string, uploadPathFile string) erro
 	buf, err = s.send(req4)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	s.Debug("Read svcctl RStartServiceW response", nil)
 	reqRead = s.NewSMB2ReadRequest(treeId, fileId)
 	buf, err = s.send(reqRead)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	res3 := NewSMB2RStartServiceWResponse()
 	s.Debug("Unmarshalling RStartServiceW response", nil)
@@ -636,7 +636,7 @@ func (s *Session) ServiceInstall(servicename string, uploadPathFile string) erro
 		s.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
 	if res3.SMB2Header.Status != ms.STATUS_SUCCESS {
-		return errors.New("Failed to RStartServiceW to " + ms.StatusMap[res3.SMB2Header.Status])
+		return "", errors.New("Failed to RStartServiceW to " + ms.StatusMap[res3.SMB2Header.Status])
 	}
 	s.Debug("Completed RStartServiceW ", nil)
 	// 关闭服务管理句柄
@@ -645,14 +645,14 @@ func (s *Session) ServiceInstall(servicename string, uploadPathFile string) erro
 	buf, err = s.send(req5)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	s.Debug("Read svcctl RCloseServiceHandle response", nil)
 	reqRead = s.NewSMB2ReadRequest(treeId, fileId)
 	buf, err = s.send(reqRead)
 	if err != nil {
 		s.Debug("", err)
-		return err
+		return "", err
 	}
 	res4 := NewSMB2RCloseServiceHandleResponse()
 	s.Debug("Unmarshalling RCloseServiceHandle response", nil)
@@ -660,8 +660,8 @@ func (s *Session) ServiceInstall(servicename string, uploadPathFile string) erro
 		s.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
 	if res4.ReturnCode != ms.STATUS_SUCCESS {
-		return errors.New("Failed to RCloseServiceHandle to " + ms.StatusMap[res4.ReturnCode])
+		return "", errors.New("Failed to RCloseServiceHandle to " + ms.StatusMap[res4.ReturnCode])
 	}
 	s.Debug("Completed RCloseServiceHandle ", nil)
-	return nil
+	return servicename, nil
 }

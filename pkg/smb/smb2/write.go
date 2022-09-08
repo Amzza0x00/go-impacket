@@ -76,10 +76,44 @@ func NewSMB2WriteResponse() SMB2WriteResponseStruct {
 }
 
 // 需要传入树id
-// 一次写入的数据不超过65536
 func (s *Session) SMB2WriteRequest(treeId uint32, filepath, filename string, fileId []byte) error {
 	s.Debug("Sending Write file request ["+filename+"]", nil)
 	// 将文件读入缓冲区
+	//file, err := os.Open(filepath + filename)
+	//if err != nil {
+	//	return err
+	//}
+	//defer file.Close()
+	//// 一次传入1kb数据
+	//fileBuf := make([]byte, 10240)
+	//fileOffset := 0
+	//i := 0
+	//for {
+	//	_, err = file.Read(fileBuf)
+	//	if err == io.EOF {
+	//		break
+	//	}
+	//	i++
+	//	req := s.NewSMB2WriteRequest(treeId, fileId, fileBuf)
+	//	if i > 0 {
+	//		req.FileOffset = uint64(fileOffset + len(fileBuf))
+	//	} else {
+	//		req.FileOffset = uint64(fileOffset)
+	//	}
+	//	buf, err := s.send(req)
+	//	if err != nil {
+	//		s.Debug("", err)
+	//		return err
+	//	}
+	//	res := NewSMB2WriteResponse()
+	//	s.Debug("Unmarshalling Write file response ["+filename+"]", nil)
+	//	if err = encoder.Unmarshal(buf, &res); err != nil {
+	//		s.Debug("Raw:\n"+hex.Dump(buf), err)
+	//	}
+	//	if res.SMB2Header.Status != ms.STATUS_SUCCESS {
+	//		return errors.New("Failed to write file to [" + filename + "]: " + ms.StatusMap[res.SMB2Header.Status])
+	//	}
+	//}
 	file, e := util.ReadFile(filepath + filename)
 	if e != nil {
 		s.Debug("", e)
@@ -101,7 +135,7 @@ func (s *Session) SMB2WriteRequest(treeId uint32, filepath, filename string, fil
 	}
 	res := NewSMB2WriteResponse()
 	s.Debug("Unmarshalling Write file response ["+filename+"]", nil)
-	if err := encoder.Unmarshal(buf, &res); err != nil {
+	if err = encoder.Unmarshal(buf, &res); err != nil {
 		s.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
 	if res.SMB2Header.Status != ms.STATUS_SUCCESS {
