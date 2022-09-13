@@ -1,4 +1,4 @@
-package smb2
+package v5
 
 import (
 	"encoding/hex"
@@ -6,12 +6,12 @@ import (
 	"go-impacket/pkg/encoder"
 	"go-impacket/pkg/ms"
 	"go-impacket/pkg/smb"
+	"go-impacket/pkg/smb/smb2"
 	"go-impacket/pkg/util"
 )
 
-// 此文件提供ms-rpc封装
+// 此文件提供ms-rpce封装
 // DCE/RPC RPC over SMB 协议实现
-// https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-srvs/accf23b0-0f57-441c-9185-43041f1b0ee9
 // https://pubs.opengroup.org/onlinepubs/9629399/
 
 // RPC over SMB 标准头
@@ -78,7 +78,7 @@ type PDUCtxEItemResponseStruct struct {
 }
 
 type PDUBindAckStruct struct {
-	SMB2ReadResponseStruct
+	smb2.ReadResponseStruct
 	Version            uint8
 	VersionMinor       uint8
 	PacketType         uint8
@@ -142,34 +142,26 @@ const (
 )
 
 func NewPDUHeader() PDUHeader {
-	smb2Header := NewSMB2Header()
+	smb2Header := smb2.NewSMB2Header()
 	smb2Header.Command = smb.SMB2_WRITE
 	smb2Header.CreditCharge = 1
 	return PDUHeader{
-		SMB2Header:    smb2Header,
-		StructureSize: 49,
-		//WriteLength:            72,
+		SMB2Header:             smb2Header,
+		StructureSize:          49,
 		FileOffset:             make([]byte, 8),
-		Channel:                SMB2_CHANNEL_NONE,
+		Channel:                smb2.SMB2_CHANNEL_NONE,
 		RemainingBytes:         0,
 		WriteChannelInfoOffset: 0,
 		WriteChannelInfoLength: 0,
 		WriteFlags:             0,
-		//Buffer: PDUHeaderStruct{
-		//	Version:            5,
-		//	VersionMinor:       0,
-		//	DataRepresentation: 16,
-		//	AuthLength:         0,
-		//	CallId:             1,
-		//},
 	}
 }
 
 // 函数绑定请求
-func (s *Session) NewSMB2PDUBind(treeId uint32, fileId []byte, uuid string, version uint32) PDUHeader {
+func (c *Client) NewPDUBind(treeId uint32, fileId []byte, uuid string, version uint32) PDUHeader {
 	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = s.messageId
-	pduHeader.SMB2Header.SessionId = s.sessionId
+	pduHeader.SMB2Header.MessageId = c.GetMessageId()
+	pduHeader.SMB2Header.SessionId = c.GetSessionId()
 	pduHeader.SMB2Header.TreeId = treeId
 	pduHeader.FileId = fileId
 	pduHeader.Buffer = PDUHeaderStruct{
@@ -200,110 +192,14 @@ func (s *Session) NewSMB2PDUBind(treeId uint32, fileId []byte, uuid string, vers
 				},
 			}},
 	}
-	//pduHeader.Buffer.PacketType = PDUBind
-	//pduHeader.Buffer.PacketFlags = PDUFlagPending
-	//// 设置函数绑定
-	//pduHeader.Buffer.Buffer = PDUBindStruct{
-	//	MaxXmitFrag: 4280,
-	//	MaxRecvFrag: 4280,
-	//	AssocGroup:  0,
-	//	NumCtxItems: 1,
-	//	CtxItem: PDUCtxEItem{
-	//		ContextId:     0,
-	//		NumTransItems: 1,
-	//		Reserved:      0,
-	//		AbstractSyntax: PDUSyntaxID{
-	//			UUID:    util.PDUUuidFromBytes(uuid),
-	//			Version: 3,
-	//		},
-	//		TransferSyntax: PDUSyntaxID{
-	//			UUID:    util.PDUUuidFromBytes(NDRSyntax),
-	//			Version: 2,
-	//		},
-	//	}}
-	//// 正常情况下固定为72
-	//pduHeader.Buffer.FragLength = 72
 	return pduHeader
-	//return pduHeader{
-	//	Buffer: PDUHeaderStruct{
-	//		PacketType:  PDUBind,
-	//		PacketFlags: PDUFlagPending,
-	//		FragLength:  72,
-	//		Buffer: PDUBindStruct{
-	//			MaxXmitFrag: 4280,
-	//			MaxRecvFrag: 4280,
-	//			AssocGroup:  0,
-	//			NumCtxItems: 1,
-	//			CtxItem: PDUCtxEItem{
-	//				ContextId:     0,
-	//				NumTransItems: 1,
-	//				Reserved:      0,
-	//				AbstractSyntax: PDUSyntaxID{
-	//					UUID:    util.PDUUuidFromBytes(uuid),
-	//					Version: 3,
-	//				},
-	//				TransferSyntax: PDUSyntaxID{
-	//					UUID:    util.PDUUuidFromBytes(NDRSyntax),
-	//					Version: 2,
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
-	//smb2Header := NewSMB2Header()
-	//smb2Header.Command = smb.SMB2_WRITE
-	//smb2Header.CreditCharge = 1
-	//smb2Header.messageId = s.messageId
-	//smb2Header.sessionId = s.sessionId
-	//smb2Header.TreeId = treeId
-	//return PDUHeader{
-	//	SMB2Header:             smb2Header,
-	//	StructureSize:          49,
-	//	WriteLength:            72,
-	//	FileOffset:             make([]byte, 8),
-	//	FileId:                 fileId,
-	//	Channel:                SMB2_CHANNEL_NONE,
-	//	RemainingBytes:         0,
-	//	WriteChannelInfoOffset: 0,
-	//	WriteChannelInfoLength: 0,
-	//	WriteFlags:             0,
-	//	Buffer: PDUHeaderStruct{
-	//		Version:            5,
-	//		VersionMinor:       0,
-	//		PacketType:         PDUBind,
-	//		PacketFlags:        PDUFlagPending,
-	//		DataRepresentation: 16,
-	//		FragLength:         72,
-	//		AuthLength:         0,
-	//		CallId:             1,
-	//		Buffer: PDUBindStruct{
-	//			MaxXmitFrag: 4280,
-	//			MaxRecvFrag: 4280,
-	//			AssocGroup:  0,
-	//			NumCtxItems: 1,
-	//			CtxItem: PDUCtxEItem{
-	//				ContextId:     0,
-	//				NumTransItems: 1,
-	//				Reserved:      0,
-	//				AbstractSyntax: PDUSyntaxID{
-	//					UUID:    util.PDUUuidFromBytes("4b324fc8-1670-01d3-1278-5a47bf6ee188"), // svcctl uuid
-	//					Version: 3,
-	//				},
-	//				TransferSyntax: PDUSyntaxID{
-	//					UUID:    util.PDUUuidFromBytes(NDRSyntax),
-	//					Version: 2,
-	//				},
-	//			},
-	//		},
-	//	},
-	//}
 }
 
 // 函数绑定响应
-func NewSMB2PDUBindAck() PDUBindAckStruct {
-	smb2Header := NewSMB2Header()
+func NewPDUBindAck() PDUBindAckStruct {
+	smb2Header := smb2.NewSMB2Header()
 	return PDUBindAckStruct{
-		SMB2ReadResponseStruct: SMB2ReadResponseStruct{
+		ReadResponseStruct: smb2.ReadResponseStruct{
 			SMB2Header: smb2Header,
 		},
 		CtxItem: PDUCtxEItemResponseStruct{
@@ -312,29 +208,29 @@ func NewSMB2PDUBindAck() PDUBindAckStruct {
 	}
 }
 
-func (s *Session) SMB2PDUBind(treeId uint32, fileId []byte, uuid string, version uint32) error {
-	s.Debug("Sending rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
-	req := s.NewSMB2PDUBind(treeId, fileId, uuid, version)
-	_, err := s.send(req)
+func (c *Client) PDUBind(treeId uint32, fileId []byte, uuid string, version uint32) error {
+	c.Debug("Sending rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
+	req := c.NewPDUBind(treeId, fileId, uuid, version)
+	_, err := c.Send(req)
 	if err != nil {
-		s.Debug("", err)
+		c.Debug("", err)
 		return err
 	}
-	s.Debug("Read rpc response", nil)
-	req1 := s.NewSMB2ReadRequest(treeId, fileId)
-	buf, err1 := s.send(req1)
+	c.Debug("Read rpc response", nil)
+	req1 := c.NewReadRequest(treeId, fileId)
+	buf, err1 := c.Send(req1)
 	if err1 != nil {
-		s.Debug("", err1)
+		c.Debug("", err1)
 		return err1
 	}
-	res := NewSMB2PDUBindAck()
-	s.Debug("Unmarshalling rpc bind", nil)
-	if err := encoder.Unmarshal(buf, &res); err != nil {
-		s.Debug("Raw:\n"+hex.Dump(buf), err)
+	res := NewPDUBindAck()
+	c.Debug("Unmarshalling rpc bind", nil)
+	if err = encoder.Unmarshal(buf, &res); err != nil {
+		c.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
 	if res.SMB2Header.Status != ms.STATUS_SUCCESS {
 		return errors.New("Failed to rpc bind to [" + ms.UUIDMap[uuid] + "] " + ms.StatusMap[res.SMB2Header.Status])
 	}
-	s.Debug("Completed rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
+	c.Debug("Completed rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
 	return nil
 }

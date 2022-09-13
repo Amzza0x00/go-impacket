@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"go-impacket/pkg"
+	"go-impacket/pkg/common"
+	v5 "go-impacket/pkg/dcerpc/v5"
 	"go-impacket/pkg/smb/smb2"
 	"go-impacket/pkg/util"
 	"log"
@@ -50,7 +52,7 @@ func init() {
 }
 
 func main() {
-	options := smb2.Options{
+	options := common.ClientOptions{
 		Host:     target,
 		Port:     port,
 		Domain:   domain,
@@ -68,13 +70,13 @@ func main() {
 		fmt.Printf("[+] Login successful [%s]\n", target)
 	}
 	// 上传文件到目标
-	treeId, err1 := session.SMB2TreeConnect("C$")
+	treeId, err1 := session.TreeConnect("C$")
 	if err1 != nil {
 		session.Debug("", err1)
 	}
 	fileName := file
 	filePath := path
-	r := smb2.SMB2CreateRequestStruct{
+	r := smb2.CreateRequestStruct{
 		OpLock:             smb2.SMB2_OPLOCK_LEVEL_NONE,
 		ImpersonationLevel: smb2.Impersonation,
 		AccessMask:         smb2.FILE_CREATE,
@@ -83,11 +85,11 @@ func main() {
 		CreateDisposition:  smb2.FILE_OVERWRITE_IF,
 		CreateOptions:      smb2.FILE_NON_DIRECTORY_FILE,
 	}
-	fileId, err2 := session.SMB2CreateRequest(treeId, fileName, r)
+	fileId, err2 := session.CreateRequest(treeId, fileName, r)
 	if err2 != nil {
 		session.Debug("", err2)
 	}
-	err = session.SMB2WriteRequest(treeId, filePath, fileName, fileId)
+	err = session.WriteRequest(treeId, filePath, fileName, fileId)
 	if err != nil {
 		session.Debug("", err)
 	}
@@ -98,10 +100,12 @@ func main() {
 		serviceName = service
 	}
 	uploadPathFile := "%SYSTEMDRIVE%\\" + fileName
+	rpc, _ := v5.SMBTransport()
+	rpc.Client = *session
 	// 创建服务并启动
-	servicename, err := session.ServiceInstall(serviceName, uploadPathFile)
+	servicename, err := rpc.ServiceInstall(serviceName, uploadPathFile)
 	if err != nil {
 		session.Debug("", err)
 	}
-	fmt.Printf("[+] Service is [%s]\n", servicename)
+	fmt.Printf("[+] Service name is [%s]\n", servicename)
 }

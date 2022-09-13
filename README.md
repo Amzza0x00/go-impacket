@@ -12,5 +12,5 @@ psexec -target 172.20.10.5 -user administrator -hash 32ed87bdb5fdc5e9cba88547376
 ```
 参考
 -------
-基于以下代码修改  
+参考以下代码  
 **smb**: https://github.com/stacktitan/smb

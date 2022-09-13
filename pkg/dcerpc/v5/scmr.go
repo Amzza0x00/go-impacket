@@ -1,10 +1,8 @@
-package smb2
+package v5
 
 import (
-	"encoding/hex"
-	"errors"
 	"go-impacket/pkg/encoder"
-	"go-impacket/pkg/ms"
+	"go-impacket/pkg/smb/smb2"
 	"go-impacket/pkg/util"
 )
 
@@ -63,7 +61,7 @@ const (
 
 // OpenSCManagerW响应结构
 type OpenSCManagerWResponse struct {
-	SMB2ReadResponseStruct
+	smb2.ReadResponseStruct
 	Version            uint8
 	VersionMinor       uint8
 	PacketType         uint8
@@ -147,10 +145,10 @@ const (
 //dwDesiredAccess：一个值，指定对数据库的访问。这必须是第 3.1.4 节中指定的值之一。
 //客户端还必须具有 SC_MANAGER_CONNECT 访问权限。
 //lpScHandle：一种 LPSC_RPC_HANDLE 数据类型，用于定义新打开的 SCM 数据库的句柄。
-func (s *Session) NewSMB2OpenSCManagerWRequest(treeId uint32, fileId []byte) PDUHeader {
+func (c *Client) NewOpenSCManagerWRequest(treeId uint32, fileId []byte) PDUHeader {
 	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = s.messageId
-	pduHeader.SMB2Header.SessionId = s.sessionId
+	pduHeader.SMB2Header.MessageId = c.GetMessageId()
+	pduHeader.SMB2Header.SessionId = c.GetSessionId()
 	pduHeader.SMB2Header.TreeId = treeId
 	pduHeader.FileId = fileId
 	machinename := string(util.Random(6)) + "\x00"
@@ -185,7 +183,7 @@ func (s *Session) NewSMB2OpenSCManagerWRequest(treeId uint32, fileId []byte) PDU
 	return pduHeader
 }
 
-func NewSMB2OpenSCManagerWResponse() OpenSCManagerWResponse {
+func NewOpenSCManagerWResponse() OpenSCManagerWResponse {
 	return OpenSCManagerWResponse{
 		ContextHandle: make([]byte, 20),
 	}
@@ -201,7 +199,7 @@ type ROpenServiceWRequestStruct struct {
 }
 
 type ROpenServiceWResponseStruct struct {
-	SMB2ReadResponseStruct
+	smb2.ReadResponseStruct
 	Version            uint8
 	VersionMinor       uint8
 	PacketType         uint8
@@ -218,10 +216,10 @@ type ROpenServiceWResponseStruct struct {
 	ReturnCode         uint32
 }
 
-func (s *Session) NewSMB2ROpenServiceWRequest(treeId uint32, fileId, contextHandle []byte, servicename string) PDUHeader {
+func (c *Client) NewROpenServiceWRequest(treeId uint32, fileId, contextHandle []byte, servicename string) PDUHeader {
 	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = s.messageId
-	pduHeader.SMB2Header.SessionId = s.sessionId
+	pduHeader.SMB2Header.MessageId = c.GetMessageId()
+	pduHeader.SMB2Header.SessionId = c.GetSessionId()
 	pduHeader.SMB2Header.TreeId = treeId
 	pduHeader.FileId = fileId
 	serName := servicename + "\x00"
@@ -251,7 +249,7 @@ func (s *Session) NewSMB2ROpenServiceWRequest(treeId uint32, fileId, contextHand
 	return pduHeader
 }
 
-func NewSMB2ROpenServiceWResponse() ROpenServiceWResponseStruct {
+func NewROpenServiceWResponse() ROpenServiceWResponseStruct {
 	return ROpenServiceWResponseStruct{
 		ContextHandle: make([]byte, 20),
 	}
@@ -303,7 +301,7 @@ type binaryPathName struct {
 
 // RCreateServiceW响应结构
 type RCreateServiceWResponseStruct struct {
-	SMB2ReadResponseStruct
+	smb2.ReadResponseStruct
 	Version            uint8
 	VersionMinor       uint8
 	PacketType         uint8
@@ -348,10 +346,10 @@ const (
 	SERVICE_ERROR_CRITICAL = 0x00000003
 )
 
-func (s *Session) NewSMB2RCreateServiceWRequest(treeId uint32, fileId, contextHandle []byte, servicename, uploadPathFile string) PDUHeader {
+func (c *Client) NewRCreateServiceWRequest(treeId uint32, fileId, contextHandle []byte, servicename, uploadPathFile string) PDUHeader {
 	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = s.messageId
-	pduHeader.SMB2Header.SessionId = s.sessionId
+	pduHeader.SMB2Header.MessageId = c.GetMessageId()
+	pduHeader.SMB2Header.SessionId = c.GetSessionId()
 	pduHeader.SMB2Header.TreeId = treeId
 	pduHeader.FileId = fileId
 	serName := servicename + "\x00"
@@ -395,7 +393,7 @@ func (s *Session) NewSMB2RCreateServiceWRequest(treeId uint32, fileId, contextHa
 	return pduHeader
 }
 
-func NewSMB2RCreateServiceWResponse() RCreateServiceWResponseStruct {
+func NewRCreateServiceWResponse() RCreateServiceWResponseStruct {
 	return RCreateServiceWResponseStruct{
 		ContextHandle: make([]byte, 20),
 	}
@@ -410,7 +408,7 @@ type RStartServiceWRequestStruct struct {
 }
 
 type RStartServiceWResponseStruct struct {
-	SMB2ReadResponseStruct
+	smb2.ReadResponseStruct
 	Version            uint8
 	VersionMinor       uint8
 	PacketType         uint8
@@ -427,16 +425,18 @@ type RStartServiceWResponseStruct struct {
 }
 
 // 启动服务封装
-func (s *Session) NewSMB2RStartServiceWRequest(treeId uint32, fileId, contextHandle []byte) PDUHeader {
+func (c *Client) NewRStartServiceWRequest(treeId uint32, fileId, contextHandle []byte) PDUHeader {
 	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = s.messageId
-	pduHeader.SMB2Header.SessionId = s.sessionId
+	pduHeader.SMB2Header.MessageId = c.GetMessageId()
+	pduHeader.SMB2Header.SessionId = c.GetSessionId()
+	pduHeader.SMB2Header.Credits = 127
 	pduHeader.SMB2Header.TreeId = treeId
 	pduHeader.FileId = fileId
+	argv := encoder.ToUnicode(string(make([]byte, 4)))
 	buffer := RStartServiceWRequestStruct{
 		ContextHandle: contextHandle,
 		Argc:          0,
-		Argv:          encoder.ToUnicode("0"),
+		Argv:          argv[:4],
 	}
 	fragLength := 24 + util.SizeOfStruct(buffer)
 	pduHeader.Buffer = PDUExtHeaderStruct{
@@ -456,7 +456,7 @@ func (s *Session) NewSMB2RStartServiceWRequest(treeId uint32, fileId, contextHan
 }
 
 // 启动服务响应封装
-func NewSMB2RStartServiceWResponse() RStartServiceWResponseStruct {
+func NewRStartServiceWResponse() RStartServiceWResponseStruct {
 	return RStartServiceWResponseStruct{}
 }
 
@@ -466,7 +466,7 @@ type RCloseServiceHandleRequestStruct struct {
 }
 
 type RCloseServiceHandleResponseStruct struct {
-	SMB2ReadResponseStruct
+	smb2.ReadResponseStruct
 	Version            uint8
 	VersionMinor       uint8
 	PacketType         uint8
@@ -483,10 +483,10 @@ type RCloseServiceHandleResponseStruct struct {
 	ReturnCode         uint32
 }
 
-func (s *Session) NewSMB2RCloseServiceHandleRequest(treeId uint32, fileId, contextHandle []byte) PDUHeader {
+func (c *Client) NewRCloseServiceHandleRequest(treeId uint32, fileId, contextHandle []byte) PDUHeader {
 	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = s.messageId
-	pduHeader.SMB2Header.SessionId = s.sessionId
+	pduHeader.SMB2Header.MessageId = c.GetMessageId()
+	pduHeader.SMB2Header.SessionId = c.GetSessionId()
 	pduHeader.SMB2Header.TreeId = treeId
 	pduHeader.FileId = fileId
 	buffer := RCloseServiceHandleRequestStruct{ContextHandle: contextHandle}
@@ -501,167 +501,14 @@ func (s *Session) NewSMB2RCloseServiceHandleRequest(treeId uint32, fileId, conte
 		AuthLength:         0,
 		CallId:             6,
 		ContextId:          0,
-		OpNum:              RStartServiceW,
+		OpNum:              RCloseServiceHandle,
 		Buffer:             buffer,
 	}
 	return pduHeader
 }
 
-func NewSMB2RCloseServiceHandleResponse() RCloseServiceHandleResponseStruct {
+func NewRCloseServiceHandleResponse() RCloseServiceHandleResponseStruct {
 	return RCloseServiceHandleResponseStruct{
 		ContextHandle: make([]byte, 20),
 	}
-}
-
-// 服务安装
-func (s *Session) ServiceInstall(servicename string, uploadPathFile string) (service string, err error) {
-	var fileId []byte
-	// 建立ipc$管道
-	treeId, err := s.SMB2TreeConnect("IPC$")
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	r := SMB2CreateRequestStruct{
-		OpLock:             SMB2_OPLOCK_LEVEL_NONE,
-		ImpersonationLevel: Impersonation,
-		AccessMask:         FILE_OPEN_IF,
-		FileAttributes:     FILE_ATTRIBUTE_NORMAL,
-		ShareAccess:        FILE_SHARE_READ,
-		CreateDisposition:  FILE_OPEN_IF,
-		CreateOptions:      FILE_NON_DIRECTORY_FILE,
-	}
-	fileId, err = s.SMB2CreateRequest(treeId, "svcctl", r)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	// 绑定svcctl函数
-	err = s.SMB2PDUBind(treeId, fileId, ms.NTSVCS_UUID, ms.NTSVCS_VERSION)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	req := s.NewSMB2OpenSCManagerWRequest(treeId, fileId)
-	_, err = s.send(req)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	s.Debug("Read svcctl response", nil)
-	req1 := s.NewSMB2ReadRequest(treeId, fileId)
-	buf, err1 := s.send(req1)
-	if err1 != nil {
-		s.Debug("", err1)
-		return "", err
-	}
-	res := NewSMB2OpenSCManagerWResponse()
-	s.Debug("Unmarshalling OpenSCManagerW response", nil)
-	if err = encoder.Unmarshal(buf, &res); err != nil {
-		s.Debug("Raw:\n"+hex.Dump(buf), err)
-	}
-	if res.SMB2Header.Status != ms.STATUS_SUCCESS {
-		return "", errors.New("Failed to OpenSCManagerW service active to " + ms.StatusMap[res.SMB2Header.Status])
-	}
-	s.Debug("Completed OpenSCManagerW ", nil)
-	// 获取OpenSCManagerW句柄
-	contextHandle := res.ContextHandle
-	// 打开服务
-	s.Debug("Sending svcctl OpenServiceW request", nil)
-	req2 := s.NewSMB2ROpenServiceWRequest(treeId, fileId, contextHandle, servicename)
-	buf, err = s.send(req2)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	s.Debug("Read svcctl OpenServiceW response", nil)
-	reqRead := s.NewSMB2ReadRequest(treeId, fileId)
-	buf, err = s.send(reqRead)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	res1 := NewSMB2ROpenServiceWResponse()
-	s.Debug("Unmarshalling ROpenServiceW response", nil)
-	if err = encoder.Unmarshal(buf, &res1); err != nil {
-		s.Debug("Raw:\n"+hex.Dump(buf), err)
-	}
-	//if res.SMB2Header.Status != ms.STATUS_SUCCESS {
-	//	return errors.New("Failed to ROpenServiceW to " + ms.StatusMap[res.SMB2Header.Status])
-	//}
-	s.Debug("Completed ROpenServiceW ", nil)
-	// 创建服务
-	s.Debug("Sending svcctl RCreateServiceW request", nil)
-	// uploadPathFile %systemroot%\xxx
-	req3 := s.NewSMB2RCreateServiceWRequest(treeId, fileId, contextHandle, servicename, uploadPathFile)
-	buf, err = s.send(req3)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	s.Debug("Read svcctl RCreateServiceW response", nil)
-	reqRead = s.NewSMB2ReadRequest(treeId, fileId)
-	buf, err = s.send(reqRead)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	res2 := NewSMB2RCreateServiceWResponse()
-	s.Debug("Unmarshalling RCreateServiceW response", nil)
-	if err = encoder.Unmarshal(buf, &res2); err != nil {
-		s.Debug("Raw:\n"+hex.Dump(buf), err)
-	}
-	s.Debug("Completed RCreateServiceW to ["+servicename+"] ", nil)
-	// 得到创建服务后的服务句柄
-	serviceHandle := res2.ContextHandle
-	// 启动服务
-	// bug: 服务启动失败,0x20，原因未知
-	s.Debug("Sending svcctl RStartServiceW request", nil)
-	req4 := s.NewSMB2RStartServiceWRequest(treeId, fileId, serviceHandle)
-	buf, err = s.send(req4)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	s.Debug("Read svcctl RStartServiceW response", nil)
-	reqRead = s.NewSMB2ReadRequest(treeId, fileId)
-	buf, err = s.send(reqRead)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	res3 := NewSMB2RStartServiceWResponse()
-	s.Debug("Unmarshalling RStartServiceW response", nil)
-	if err = encoder.Unmarshal(buf, &res3); err != nil {
-		s.Debug("Raw:\n"+hex.Dump(buf), err)
-	}
-	if res3.SMB2Header.Status != ms.STATUS_SUCCESS {
-		return "", errors.New("Failed to RStartServiceW to " + ms.StatusMap[res3.SMB2Header.Status])
-	}
-	s.Debug("Completed RStartServiceW ", nil)
-	// 关闭服务管理句柄
-	s.Debug("Sending svcctl RCloseServiceHandle request", nil)
-	req5 := s.NewSMB2RCloseServiceHandleRequest(treeId, fileId, serviceHandle)
-	buf, err = s.send(req5)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	s.Debug("Read svcctl RCloseServiceHandle response", nil)
-	reqRead = s.NewSMB2ReadRequest(treeId, fileId)
-	buf, err = s.send(reqRead)
-	if err != nil {
-		s.Debug("", err)
-		return "", err
-	}
-	res4 := NewSMB2RCloseServiceHandleResponse()
-	s.Debug("Unmarshalling RCloseServiceHandle response", nil)
-	if err = encoder.Unmarshal(buf, &res3); err != nil {
-		s.Debug("Raw:\n"+hex.Dump(buf), err)
-	}
-	if res4.ReturnCode != ms.STATUS_SUCCESS {
-		return "", errors.New("Failed to RCloseServiceHandle to " + ms.StatusMap[res4.ReturnCode])
-	}
-	s.Debug("Completed RCloseServiceHandle ", nil)
-	return servicename, nil
 }
