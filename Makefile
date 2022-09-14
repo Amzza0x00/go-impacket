@@ -21,4 +21,4 @@ build-osx:
 
 build-windows:
 	${BUILD_ENV} GOARCH=amd64 GOOS=windows go build ${LDFLAGS} -o build/windows/${PSEXEC}-windows-amd64.exe cmd/psexec.go;
-	${BUILD_ENV} GOARCH=386 GOOS=windows go build ${LDFLAGS} -o build/windows/${PSEXEC}-windows-x86 cmd/psexec.go;
+	${BUILD_ENV} GOARCH=386 GOOS=windows go build ${LDFLAGS} -o build/windows/${PSEXEC}-windows-x86.exe cmd/psexec.go;
