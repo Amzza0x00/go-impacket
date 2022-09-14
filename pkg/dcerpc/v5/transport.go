@@ -11,3 +11,7 @@ type Client struct {
 func SMBTransport() (client *Client, err error) {
 	return &Client{}, nil
 }
+
+//func TCPTransport() (client *Client, err error) {
+//	return &Client{}, nil
+//}

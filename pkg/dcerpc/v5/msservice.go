@@ -171,7 +171,7 @@ func (c *Client) StartService(treeId uint32, fileId, serviceHandle []byte) error
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
 	if res.StubData != ms.STATUS_SUCCESS {
-		return errors.New("Failed to RStartServiceW to " + ms.StatusMap[res.StubData])
+		return errors.New("Failed to RStartServiceW: " + ms.StatusMap[res.StubData])
 	}
 	c.Debug("Completed RStartServiceW ", nil)
 	return nil
