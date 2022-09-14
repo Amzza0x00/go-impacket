@@ -96,14 +96,20 @@ Loop:
 		case nr == 0: // EOF
 			break Loop
 		case nr > 0:
-			i++
 			req := c.NewWriteRequest(treeId, fileId, fileBuf)
-			if i > 1 {
-				fileOffset += len(fileBuf[0:nr])
-				req.FileOffset += uint64(fileOffset)
-			} else {
+			if i == 0 {
 				req.FileOffset = 0
+			} else {
+				req.FileOffset = uint64(fileOffset)
 			}
+			fileOffset += nr
+			i++
+			//if i > 1 {
+			//	fileOffset += len(fileBuf[0:nr])
+			//	req.FileOffset += uint64(fileOffset)
+			//} else {
+			//	req.FileOffset = 0
+			//}
 			buf, err := c.Send(req)
 			if err != nil {
 				c.Debug("", err)

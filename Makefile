@@ -1,5 +1,5 @@
 BUILD_ENV := CGO_ENABLED=0
-LDFLAGS=-v -a -ldflags '-s -w' -gcflags="all=-trimpath=${PWD}" -asmflags="all=-trimpath=${PWD}"
+LDFLAGS=-v -a -ldflags '-s -w' -gcflags="all=-trimpath=${PWD};${GOPATH};${GOROOT}" -asmflags="all=-trimpath=${PWD};${GOPATH};${GOROOT}"
 
 PSEXEC := psexec
 
