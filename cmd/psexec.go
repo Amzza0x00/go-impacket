@@ -69,41 +69,16 @@ func main() {
 	if session.IsAuthenticated {
 		fmt.Printf("[+] Login successful [%s]\n", target)
 	}
-	// 上传文件到目标
-	treeId, err1 := session.TreeConnect("C$")
-	if err1 != nil {
-		session.Debug("", err1)
-	}
-	fileName := file
-	filePath := path
-	r := smb2.CreateRequestStruct{
-		OpLock:             smb2.SMB2_OPLOCK_LEVEL_NONE,
-		ImpersonationLevel: smb2.Impersonation,
-		AccessMask:         smb2.FILE_CREATE,
-		FileAttributes:     smb2.FILE_ATTRIBUTE_NORMAL,
-		ShareAccess:        smb2.FILE_SHARE_WRITE,
-		CreateDisposition:  smb2.FILE_OVERWRITE_IF,
-		CreateOptions:      smb2.FILE_NON_DIRECTORY_FILE,
-	}
-	fileId, err2 := session.CreateRequest(treeId, fileName, r)
-	if err2 != nil {
-		session.Debug("", err2)
-	}
-	err = session.WriteRequest(treeId, filePath, fileName, fileId)
-	if err != nil {
-		session.Debug("", err)
-	}
 	var serviceName string
 	if service == "" {
 		serviceName = string(util.Random(4))
 	} else {
 		serviceName = service
 	}
-	uploadPathFile := "%SYSTEMDRIVE%\\" + fileName
 	rpc, _ := v5.SMBTransport()
 	rpc.Client = *session
 	// 创建服务并启动
-	servicename, err := rpc.ServiceInstall(serviceName, uploadPathFile)
+	servicename, err := rpc.ServiceInstall(serviceName, file, path)
 	if err != nil {
 		session.Debug("", err)
 	}

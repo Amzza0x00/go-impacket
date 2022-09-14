@@ -92,7 +92,7 @@ Loop:
 	for {
 		switch nr, _ := file.Read(fileBuf[:]); true {
 		case nr < 0:
-			os.Exit(1)
+			return errors.New("Failed read file to [" + filepath + filename + "]")
 		case nr == 0: // EOF
 			break Loop
 		case nr > 0:
