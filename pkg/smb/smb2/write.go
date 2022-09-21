@@ -104,12 +104,6 @@ Loop:
 			}
 			fileOffset += nr
 			i++
-			//if i > 1 {
-			//	fileOffset += len(fileBuf[0:nr])
-			//	req.FileOffset += uint64(fileOffset)
-			//} else {
-			//	req.FileOffset = 0
-			//}
 			buf, err := c.Send(req)
 			if err != nil {
 				c.Debug("", err)

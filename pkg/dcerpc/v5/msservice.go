@@ -7,16 +7,18 @@ import (
 	"go-impacket/pkg/encoder"
 	"go-impacket/pkg/ms"
 	"go-impacket/pkg/smb/smb2"
+	"go-impacket/pkg/util"
+	"strings"
 )
 
 // 此文件提供访问windows服务管理安装/删除
 
-// 上传文件
-func (c *Client) FileUpload(file, Path string) error {
+// 上传文件，返回文件名
+func (c *Client) FileUpload(file, Path string) (filename string, err error) {
 	treeId, err := c.TreeConnect("C$")
 	if err != nil {
 		c.Debug("", err)
-		return err
+		return "", err
 	}
 	createRequestStruct := smb2.CreateRequestStruct{
 		OpLock:             smb2.SMB2_OPLOCK_LEVEL_NONE,
@@ -27,19 +29,28 @@ func (c *Client) FileUpload(file, Path string) error {
 		CreateDisposition:  smb2.FILE_OVERWRITE_IF,
 		CreateOptions:      smb2.FILE_NON_DIRECTORY_FILE,
 	}
-	fileId, err := c.CreateRequest(treeId, file, createRequestStruct)
+	// 文件名不能超过11位，如果超过则随机生成
+	var newFilename string
+	if len(file) <= 11 {
+		newFilename = file
+	} else {
+		// 切分拿到扩展名
+		fileInfo := strings.Split(file, ".")
+		newFilename = string(util.Random(7)) + "." + fileInfo[len(fileInfo)-1]
+	}
+	fileId, err := c.CreateRequest(treeId, newFilename, createRequestStruct)
 	if err != nil {
 		c.Debug("", err)
-		return err
+		return "", err
 	}
 	err = c.WriteRequest(treeId, Path, file, fileId)
 	if err != nil {
 		c.Debug("", err)
-		return err
+		return newFilename, err
 	}
 	// 关闭目录连接
 	c.TreeDisconnect("C$")
-	return nil
+	return newFilename, nil
 }
 
 // 打开scm，返回scm服务句柄
@@ -214,7 +225,7 @@ func (c *Client) CloseService(treeId uint32, fileId, serviceHandle []byte) error
 // 服务安装
 func (c *Client) ServiceInstall(servicename string, file, path string) (service string, err error) {
 	// 上传文件
-	err = c.FileUpload(file, path)
+	filename, err := c.FileUpload(file, path)
 	if err != nil {
 		fmt.Println("[-]", err)
 		return "", err
@@ -238,7 +249,7 @@ func (c *Client) ServiceInstall(servicename string, file, path string) (service 
 		return "", err
 	}
 	// 创建服务
-	uploadFilePath := "%systemdrive%\\" + file
+	uploadFilePath := "%systemdrive%\\" + filename
 	serviceHandle, err := c.CreateService(treeId, svcctlFileId, svcctlHandler, servicename, uploadFilePath)
 	if err != nil {
 		fmt.Println("[-]", err)

@@ -6,7 +6,6 @@ import (
 	"encoding/asn1"
 	"go-impacket/pkg/encoder"
 	"go-impacket/pkg/ntlm"
-	"log"
 	"strconv"
 	"strings"
 )
@@ -86,7 +85,7 @@ func NewNegTokenResp() (NegTokenResp, error) {
 func (n *NegTokenInit) MarshalBinary(meta *encoder.Metadata) ([]byte, error) {
 	buf, err := asn1.Marshal(*n)
 	if err != nil {
-		log.Panicln(err)
+		//log.Panicln(err)
 		return nil, err
 	}
 

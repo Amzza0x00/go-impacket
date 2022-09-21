@@ -296,7 +296,7 @@ type binaryPathName struct {
 	MaxCount       uint32
 	Offset         uint32
 	ActualCount    uint32
-	BinaryPathName []byte
+	BinaryPathName []byte `smb:"fixed:26"` // 长度不能超过26字节
 }
 
 // RCreateServiceW响应结构
