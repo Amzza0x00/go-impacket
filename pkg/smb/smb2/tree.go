@@ -14,7 +14,7 @@ import (
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/832d2130-22e8-4afb-aafd-b30bb0901798
 // 树连接请求结构
 type TreeConnectRequestStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize uint16
 	Reserved      uint16 //2字节，smb3.x使用，其他忽略
 	PathOffset    uint16 `smb:"offset:Path"`
@@ -25,7 +25,7 @@ type TreeConnectRequestStruct struct {
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/dd34e26c-a75e-47fa-aab2-6efc27502e96
 // 树连接响应结构
 type TreeConnectResponseStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize uint16
 	ShareType     uint8 //1字节，访问共享类型
 	Reserved      uint8 //1字节
@@ -37,7 +37,7 @@ type TreeConnectResponseStruct struct {
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/8a622ecb-ffee-41b9-b4c4-83ff2d3aba1b
 // 断开树连接请求结构
 type TreeDisconnectRequestStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize uint16 //2字节，客户端必须设为4,表示请求大小
 	Reserved      uint16
 }
@@ -45,56 +45,56 @@ type TreeDisconnectRequestStruct struct {
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/aeac92de-8db3-48f8-a8b7-bfee28b9fd9e
 // 断开树连接响应结构
 type TreeDisconnectResponseStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize uint16
 	Reserved      uint16
 }
 
 func (c *Client) NewTreeConnectRequest(name string) (TreeConnectRequestStruct, error) {
-	smb2Header := NewSMB2Header()
+	smb2Header := NewSMB2Packet()
 	smb2Header.Command = smb.SMB2_TREE_CONNECT
 	smb2Header.CreditCharge = 1
 	smb2Header.MessageId = c.GetMessageId()
 	smb2Header.SessionId = c.GetSessionId()
-	smb2Header.Credits = 127
+	smb2Header.CreditRequestResponse = 127
 	//格式 \\172.20.10.5:445\IPC$
 	path := fmt.Sprintf("\\\\%s:%d\\%s", c.GetOptions().Host, c.GetOptions().Port, name)
 	return TreeConnectRequestStruct{
-		SMB2Header:    smb2Header,
-		StructureSize: 9,
-		Reserved:      0,
-		PathOffset:    0,
-		PathLength:    0,
-		Path:          encoder.ToUnicode(path),
+		SMB2PacketStruct: smb2Header,
+		StructureSize:    9,
+		Reserved:         0,
+		PathOffset:       0,
+		PathLength:       0,
+		Path:             encoder.ToUnicode(path),
 	}, nil
 }
 
 func NewTreeConnectResponse() TreeConnectResponseStruct {
-	smb2Header := NewSMB2Header()
+	smb2Header := NewSMB2Packet()
 	return TreeConnectResponseStruct{
-		SMB2Header: smb2Header,
+		SMB2PacketStruct: smb2Header,
 	}
 }
 
 func (c *Client) NewTreeDisconnectRequest(treeId uint32) (TreeDisconnectRequestStruct, error) {
-	smb2Header := NewSMB2Header()
+	smb2Header := NewSMB2Packet()
 	smb2Header.Command = smb.SMB2_TREE_DISCONNECT
 	smb2Header.CreditCharge = 1
 	smb2Header.MessageId = c.GetMessageId()
 	smb2Header.SessionId = c.GetSessionId()
 	smb2Header.TreeId = treeId
-	smb2Header.Credits = 127
+	smb2Header.CreditRequestResponse = 127
 	return TreeDisconnectRequestStruct{
-		SMB2Header:    smb2Header,
-		StructureSize: 4,
-		Reserved:      0,
+		SMB2PacketStruct: smb2Header,
+		StructureSize:    4,
+		Reserved:         0,
 	}, nil
 }
 
 func NewTreeDisconnectResponse() TreeDisconnectResponseStruct {
-	smb2Header := NewSMB2Header()
+	smb2Header := NewSMB2Packet()
 	return TreeDisconnectResponseStruct{
-		SMB2Header: smb2Header,
+		SMB2PacketStruct: smb2Header,
 	}
 }
 
@@ -117,10 +117,10 @@ func (c *Client) TreeConnect(name string) (treeId uint32, err error) {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
 		//return err
 	}
-	if res.SMB2Header.Status != ms.STATUS_SUCCESS {
-		return 0, errors.New("Failed to connect to [" + name + "]: " + ms.StatusMap[res.SMB2Header.Status])
+	if res.SMB2PacketStruct.Status != ms.STATUS_SUCCESS {
+		return 0, errors.New("Failed to connect to [" + name + "]: " + ms.StatusMap[res.SMB2PacketStruct.Status])
 	}
-	treeID := res.SMB2Header.TreeId
+	treeID := res.SMB2PacketStruct.TreeId
 	trees := make(map[string]uint32)
 	trees[name] = treeID
 	c.WithTrees(trees)
@@ -164,8 +164,8 @@ func (c *Client) TreeDisconnect(name string) error {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
 		return err
 	}
-	if res.SMB2Header.Status != ms.STATUS_MORE_PROCESSING_REQUIRED {
-		return errors.New("Failed to connect to tree: " + ms.StatusMap[res.SMB2Header.Status])
+	if res.SMB2PacketStruct.Status != ms.STATUS_MORE_PROCESSING_REQUIRED {
+		return errors.New("Failed to connect to tree: " + ms.StatusMap[res.SMB2PacketStruct.Status])
 	}
 	delete(trees, name)
 	c.WithTrees(trees)

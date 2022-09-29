@@ -12,7 +12,7 @@ import (
 
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/320f04f3-1b28-45cd-aaa1-9e5aed810dca
 type ReadRequestStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize  uint16 //2字节，必须设置49/0x0031
 	Padding        uint8
 	Flags          uint8
@@ -30,7 +30,7 @@ type ReadRequestStruct struct {
 
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/3e3d2f2c-0e2f-41ea-ad07-fbca6ffdfd90
 type ReadResponseStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize uint16
 	DataOffset    uint32 `smb:"fixed:4"`
 	Reserved      uint32 `smb:"fixed:4"`
@@ -41,40 +41,43 @@ type ReadResponseStruct struct {
 }
 
 type ReadResponseStruct2 struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize uint16
-	DataOffset    uint32 `smb:"fixed:4"`
-	Reserved      uint32 `smb:"fixed:4"`
 	BlobOffset    uint8
-	Reserved2     uint8
+	Reserved      uint8
 	BlobLength    uint32
+	ReadRemaining uint32
+	Reserved2     uint32
 	Info          []byte `smb:"count:BlobLength"` //写入的数据
 }
 
 func (c *Client) NewReadRequest(treeId uint32, fileId []byte) ReadRequestStruct {
-	smb2Header := NewSMB2Header()
+	smb2Header := NewSMB2Packet()
 	smb2Header.Command = smb.SMB2_READ
 	smb2Header.CreditCharge = 1
 	smb2Header.MessageId = c.GetMessageId()
 	smb2Header.SessionId = c.GetSessionId()
 	smb2Header.TreeId = treeId
-	smb2Header.Credits = 127
+	smb2Header.CreditRequestResponse = 127
 	return ReadRequestStruct{
-		SMB2Header:    smb2Header,
-		StructureSize: 49,
-		Padding:       0x50,
-		ReadLength:    65536,
-		FileOffset:    make([]byte, 8),
-		FileId:        fileId,
-		Channel:       SMB2_CHANNEL_NONE,
-		BlobOffset:    0,
-		Buffer:        make([]byte, 0),
-		Reserved:      48,
+		SMB2PacketStruct: smb2Header,
+		StructureSize:    49,
+		Padding:          0x50,
+		ReadLength:       65536,
+		FileOffset:       make([]byte, 8),
+		FileId:           fileId,
+		Channel:          SMB2_CHANNEL_NONE,
+		BlobOffset:       0,
+		Buffer:           make([]byte, 0),
+		Reserved:         48,
 	}
 }
 
 func NewReadResponse() ReadResponseStruct2 {
-	return ReadResponseStruct2{}
+	smb2Header := NewSMB2Packet()
+	return ReadResponseStruct2{
+		SMB2PacketStruct: smb2Header,
+	}
 }
 
 func (c *Client) ReadRequest(treeId uint32, fileId []byte) (info []byte, err error) {
@@ -92,8 +95,8 @@ func (c *Client) ReadRequest(treeId uint32, fileId []byte) (info []byte, err err
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
 	c.Debug("Raw:\n"+hex.Dump(buf), err)
-	if res.SMB2Header.Status != ms.STATUS_SUCCESS {
-		return nil, errors.New("Failed to Read response to :" + ms.StatusMap[res.SMB2Header.Status])
+	if res.SMB2PacketStruct.Status != ms.STATUS_SUCCESS {
+		return nil, errors.New("Failed to Read response to :" + ms.StatusMap[res.SMB2PacketStruct.Status])
 	}
 	c.Debug("Completed Read response", nil)
 	return res.Info, nil

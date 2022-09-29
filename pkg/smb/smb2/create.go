@@ -122,7 +122,7 @@ const (
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/e8fb45c1-a03d-44ca-b7ae-47385cfd7997
 // 创建请求结构
 type CreateRequestStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize        uint16
 	SecurityFlags        uint8  //1字节，保留字段，不得使用
 	OpLock               uint8  //1字节，对应文档RequestedOplockLevel字段
@@ -144,7 +144,7 @@ type CreateRequestStruct struct {
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/d166aa9e-0b53-410e-b35e-3933d8131927
 // 创建请求响应结构
 type CreateResponseStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize        uint16
 	Oplock               uint8 //1字节，对应文档RequestedOplockLevel字段
 	ResponseFlags        uint8
@@ -164,13 +164,13 @@ type CreateResponseStruct struct {
 
 // 创建文件请求
 func (c *Client) NewCreateRequest(treeId uint32, filename string, r CreateRequestStruct) CreateRequestStruct {
-	smb2Header := NewSMB2Header()
+	smb2Header := NewSMB2Packet()
 	smb2Header.Command = smb.SMB2_CREATE
 	smb2Header.CreditCharge = 1
 	smb2Header.MessageId = c.GetMessageId()
 	smb2Header.SessionId = c.GetSessionId()
 	smb2Header.TreeId = treeId
-	r.SMB2Header = smb2Header
+	r.SMB2PacketStruct = smb2Header
 	r.StructureSize = 57
 	r.SecurityFlags = 0
 	r.CreateFlags = make([]byte, 8)
@@ -183,16 +183,16 @@ func (c *Client) NewCreateRequest(treeId uint32, filename string, r CreateReques
 
 // 创建请求响应
 func NewCreateResponse() CreateResponseStruct {
-	smb2Header := NewSMB2Header()
+	smb2Header := NewSMB2Packet()
 	return CreateResponseStruct{
-		SMB2Header:     smb2Header,
-		CreationTime:   make([]byte, 8),
-		LastAccessTime: make([]byte, 8),
-		LastWriteTime:  make([]byte, 8),
-		LastChangeTime: make([]byte, 8),
-		AllocationSize: make([]byte, 8),
-		EndofFile:      make([]byte, 8),
-		FileId:         make([]byte, 16),
+		SMB2PacketStruct: smb2Header,
+		CreationTime:     make([]byte, 8),
+		LastAccessTime:   make([]byte, 8),
+		LastWriteTime:    make([]byte, 8),
+		LastChangeTime:   make([]byte, 8),
+		AllocationSize:   make([]byte, 8),
+		EndofFile:        make([]byte, 8),
+		FileId:           make([]byte, 16),
 	}
 }
 
@@ -209,8 +209,8 @@ func (c *Client) CreateRequest(treeId uint32, filename string, r CreateRequestSt
 	if err := encoder.Unmarshal(buf, &res); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
-	if res.SMB2Header.Status != ms.STATUS_SUCCESS {
-		return nil, errors.New("Failed to create file to [" + filename + "]: " + ms.StatusMap[res.SMB2Header.Status])
+	if res.SMB2PacketStruct.Status != ms.STATUS_SUCCESS {
+		return nil, errors.New("Failed to create file to [" + filename + "]: " + ms.StatusMap[res.SMB2PacketStruct.Status])
 	}
 	c.Debug("Completed CreateFile ["+filename+"]", nil)
 	return res.FileId, nil

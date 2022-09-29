@@ -1,17 +1,26 @@
 package v5
 
 import (
+	"go-impacket/pkg/common"
 	"go-impacket/pkg/smb/smb2"
 )
 
-type Client struct {
+type SMBClient struct {
 	smb2.Client
 }
 
-func SMBTransport() (client *Client, err error) {
-	return &Client{}, nil
+type TCPClient struct {
+	common.Client
 }
 
-//func TCPTransport() (client *Client, err error) {
-//	return &Client{}, nil
-//}
+// 连接封装
+// ncacn_np协议的实现
+func SMBTransport() (client *SMBClient, err error) {
+	return &SMBClient{}, nil
+}
+
+// tcp连接封装
+func TCPTransport() (client *TCPClient, err error) {
+	//session, err := smb2.NewSession(options, debug)
+	return &TCPClient{}, nil
+}

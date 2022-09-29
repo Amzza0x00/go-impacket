@@ -5,7 +5,6 @@ import (
 	"errors"
 	"go-impacket/pkg/encoder"
 	"go-impacket/pkg/ms"
-	"go-impacket/pkg/smb"
 	"go-impacket/pkg/smb/smb2"
 	"go-impacket/pkg/util"
 )
@@ -14,24 +13,8 @@ import (
 // DCE/RPC RPC over SMB 协议实现
 // https://pubs.opengroup.org/onlinepubs/9629399/
 
-// RPC over SMB 标准头
-type PDUHeader struct {
-	smb.SMB2Header
-	StructureSize          uint16
-	DataOffset             uint16 `smb:"offset:Buffer"`
-	WriteLength            uint32 `smb:"len:Buffer"`
-	FileOffset             []byte `smb:"fixed:8"`
-	FileId                 []byte `smb:"fixed:16"` //16字节，服务端返回句柄
-	Channel                uint32
-	RemainingBytes         uint32
-	WriteChannelInfoOffset uint16
-	WriteChannelInfoLength uint16
-	WriteFlags             uint32
-	Buffer                 interface{} //写入的数据
-}
-
-// DCE/RPC 标准头
-type PDUHeaderStruct struct {
+// MSRPC 标准头
+type MSRPCHeaderStruct struct {
 	Version            uint8
 	VersionMinor       uint8
 	PacketType         uint8
@@ -40,60 +23,71 @@ type PDUHeaderStruct struct {
 	FragLength         uint16 //2字节，整个结构的长度
 	AuthLength         uint16
 	CallId             uint32
-	Buffer             interface{}
 }
 
-// 函数绑定结构
-type PDUBindStruct struct {
-	//PDUHeader
+func NewMSRPCHeader() MSRPCHeaderStruct {
+	return MSRPCHeaderStruct{
+		Version:            5,
+		VersionMinor:       0,
+		PacketType:         0,
+		PacketFlags:        0,
+		DataRepresentation: 16,
+		AuthLength:         0,
+	}
+}
+
+type MSRPCRequestHeaderStruct struct {
+	MSRPCHeaderStruct
+	AllocHint uint32 `smb:"len:Buffer"` //Buffer的长度
+	ContextId uint16
+	OpNum     uint16
+	Buffer    interface{}
+}
+
+// 函数绑定请求结构
+type MSRPCBindStruct struct {
+	MSRPCHeaderStruct
 	MaxXmitFrag uint16 //4字节，发送大小协商
 	MaxRecvFrag uint16 //4字节，接收大小协商
 	AssocGroup  uint32
 	NumCtxItems uint8
 	Reserved    uint8
 	Reserved2   uint16
-	CtxItem     PDUCtxEItem
+	CtxItem     CtxEItemStruct
+}
+
+// 函数绑定响应结构
+type MSRPCBindAckStruct struct {
+	MSRPCHeaderStruct
+	MaxXmitFrag   uint16
+	MaxRecvFrag   uint16
+	AssocGroup    uint32
+	ScndryAddrlen uint16
+	ScndryAddr    []byte `smb:"count:ScndryAddrlen"` //取决管道的长度
+	NumResults    uint8
+	CtxItem       CtxEItemResponseStruct
 }
 
 // PDU CtxItem结构
-type PDUCtxEItem struct {
+type CtxEItemStruct struct {
 	ContextId      uint16
 	NumTransItems  uint8
 	Reserved       uint8
-	AbstractSyntax PDUSyntaxID
-	TransferSyntax PDUSyntaxID
+	AbstractSyntax SyntaxIDStruct
+	TransferSyntax SyntaxIDStruct
 }
 
-type PDUSyntaxID struct {
+type SyntaxIDStruct struct {
 	UUID    []byte `smb:"fixed:16"`
 	Version uint32
 }
 
 // PDU CtxItem响应结构
-type PDUCtxEItemResponseStruct struct {
+type CtxEItemResponseStruct struct {
 	AckResult      uint16
 	AckReason      uint16
 	TransferSyntax []byte `smb:"fixed:16"` //16字节
 	SyntaxVer      uint32
-}
-
-type PDUBindAckStruct struct {
-	smb2.ReadResponseStruct
-	Version            uint8
-	VersionMinor       uint8
-	PacketType         uint8
-	PacketFlags        uint8
-	DataRepresentation uint32
-	FragLength         uint16
-	AuthLength         uint16
-	CallId             uint32
-	MaxXmitFrag        uint16
-	MaxRecvFrag        uint16
-	AssocGroup         uint32
-	ScndryAddrlen      uint16
-	ScndryAddr         []byte `smb:"count:ScndryAddrlen"` //取决管道的长度
-	NumResults         uint8
-	CtxItem            PDUCtxEItemResponseStruct
 }
 
 // PDU PacketType
@@ -141,77 +135,43 @@ const (
 	NDR64Syntax = "71710533-BEBA-4937-8319-B5DBEF9CCC36" //Version 01, NDR64 data representation protocol
 )
 
-func NewPDUHeader() PDUHeader {
-	smb2Header := smb2.NewSMB2Header()
-	smb2Header.Command = smb.SMB2_WRITE
-	smb2Header.CreditCharge = 1
-	return PDUHeader{
-		SMB2Header:             smb2Header,
-		StructureSize:          49,
-		FileOffset:             make([]byte, 8),
-		Channel:                smb2.SMB2_CHANNEL_NONE,
-		RemainingBytes:         0,
-		WriteChannelInfoOffset: 0,
-		WriteChannelInfoLength: 0,
-		WriteFlags:             0,
-	}
-}
-
-// 函数绑定请求
-func (c *Client) NewPDUBind(treeId uint32, fileId []byte, uuid string, version uint32) PDUHeader {
-	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = c.GetMessageId()
-	pduHeader.SMB2Header.SessionId = c.GetSessionId()
-	pduHeader.SMB2Header.TreeId = treeId
-	pduHeader.FileId = fileId
-	pduHeader.Buffer = PDUHeaderStruct{
-		Version:            5,
-		VersionMinor:       0,
-		PacketType:         PDUBind,
-		PacketFlags:        PDUFlagPending,
-		DataRepresentation: 16,
-		FragLength:         72,
-		AuthLength:         0,
-		CallId:             1,
-		Buffer: PDUBindStruct{
-			MaxXmitFrag: 4280,
-			MaxRecvFrag: 4280,
-			AssocGroup:  0,
-			NumCtxItems: 1,
-			CtxItem: PDUCtxEItem{
-				ContextId:     0,
-				NumTransItems: 1,
-				Reserved:      0,
-				AbstractSyntax: PDUSyntaxID{
-					UUID:    util.PDUUuidFromBytes(uuid),
-					Version: version,
-				},
-				TransferSyntax: PDUSyntaxID{
-					UUID:    util.PDUUuidFromBytes(NDRSyntax),
-					Version: 2,
-				},
-			}},
-	}
-	return pduHeader
-}
-
 // 函数绑定响应
-func NewPDUBindAck() PDUBindAckStruct {
-	smb2Header := smb2.NewSMB2Header()
-	return PDUBindAckStruct{
-		ReadResponseStruct: smb2.ReadResponseStruct{
-			SMB2Header: smb2Header,
-		},
-		CtxItem: PDUCtxEItemResponseStruct{
+func NewMSRPCBindAck() MSRPCBindAckStruct {
+	return MSRPCBindAckStruct{
+		CtxItem: CtxEItemResponseStruct{
 			TransferSyntax: make([]byte, 16),
 		},
 	}
 }
 
-func (c *Client) PDUBind(treeId uint32, fileId []byte, uuid string, version uint32) error {
+// smb->函数绑定
+func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, uuid string, version uint32) (err error) {
+	header := NewMSRPCHeader()
+	header.FragLength = 72
+	header.CallId = 1
+	header.PacketType = PDUBind
+	header.PacketFlags = PDUFlagPending
+	bind := MSRPCBindStruct{
+		MSRPCHeaderStruct: header,
+		MaxXmitFrag:       4280,
+		MaxRecvFrag:       4280,
+		AssocGroup:        0,
+		NumCtxItems:       1,
+		CtxItem: CtxEItemStruct{
+			NumTransItems: 1,
+			AbstractSyntax: SyntaxIDStruct{
+				UUID:    util.PDUUuidFromBytes(uuid),
+				Version: version,
+			},
+			TransferSyntax: SyntaxIDStruct{
+				UUID:    util.PDUUuidFromBytes(NDRSyntax),
+				Version: 2,
+			},
+		},
+	}
+	req := c.NewWriteRequest(treeId, fileId, bind)
 	c.Debug("Sending rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
-	req := c.NewPDUBind(treeId, fileId, uuid, version)
-	_, err := c.Send(req)
+	_, err = c.Send(req)
 	if err != nil {
 		c.Debug("", err)
 		return err
@@ -223,14 +183,25 @@ func (c *Client) PDUBind(treeId uint32, fileId []byte, uuid string, version uint
 		c.Debug("", err1)
 		return err1
 	}
-	res := NewPDUBindAck()
+	smbRes := smb2.NewReadResponse()
+	res := NewMSRPCBindAck()
 	c.Debug("Unmarshalling rpc bind", nil)
-	if err = encoder.Unmarshal(buf, &res); err != nil {
+	if err = encoder.Unmarshal(buf, &smbRes); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
-	if res.SMB2Header.Status != ms.STATUS_SUCCESS {
-		return errors.New("Failed to rpc bind to [" + ms.UUIDMap[uuid] + "] " + ms.StatusMap[res.SMB2Header.Status])
+	// 切开smb头
+	startIndex := len(buf) - int(smbRes.BlobLength)
+	if err = encoder.Unmarshal(buf[startIndex:], &res); err != nil {
+		c.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
-	c.Debug("Completed rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
+	if res.NumResults < 1 {
+		return errors.New("Failed to rpc bind code : [" + ms.UUIDMap[uuid] + "] " + ms.StatusMap[smbRes.Status])
+	}
+	c.Debug("Completed rpc bind : ["+ms.UUIDMap[uuid]+"]", nil)
 	return nil
+}
+
+// tcp->函数绑定
+func (c *TCPClient) MSRPCBind() (err error) {
+	return err
 }

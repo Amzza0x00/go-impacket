@@ -29,7 +29,7 @@ type Client struct {
 	trees             map[string]uint32
 }
 
-// SMB连接参数
+// 连接参数
 type ClientOptions struct {
 	Host        string
 	Port        int

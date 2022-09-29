@@ -2,30 +2,12 @@ package v5
 
 import (
 	"go-impacket/pkg/encoder"
-	"go-impacket/pkg/smb/smb2"
 	"go-impacket/pkg/util"
 )
 
 // 此文件提供访问windows服务管理封装
 
-// DCE/RPC 扩展头
-// 调用win ms service control api
-type PDUExtHeaderStruct struct {
-	Version            uint8
-	VersionMinor       uint8
-	PacketType         uint8
-	PacketFlags        uint8
-	DataRepresentation uint32 //4字节，小端排序，0x10
-	FragLength         uint16 //2字节，整个结构的长度
-	AuthLength         uint16
-	CallId             uint32
-	AllocHint          uint32 `smb:"len:Buffer"` //Buffer的长度
-	ContextId          uint16
-	OpNum              uint16
-	Buffer             interface{}
-}
-
-// ms service control
+// 打开服务管理结构
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-scmr/dc84adb3-d51d-48eb-820d-ba1c6ca5faf2
 type OpenSCManagerWStruct struct {
 	MachineName machineName
@@ -61,21 +43,13 @@ const (
 
 // OpenSCManagerW响应结构
 type OpenSCManagerWResponse struct {
-	smb2.ReadResponseStruct
-	Version            uint8
-	VersionMinor       uint8
-	PacketType         uint8
-	PacketFlags        uint8
-	DataRepresentation uint32
-	FragLength         uint16
-	AuthLength         uint16
-	CallId             uint32
-	AllocHint          uint32
-	ContextId          uint16
-	CancelCount        uint8
-	Reserved           uint8
-	ContextHandle      []byte `smb:"fixed:20"`
-	ReturnCode         uint32
+	MSRPCHeaderStruct
+	AllocHint     uint32
+	ContextId     uint16
+	CancelCount   uint8
+	Reserved      uint8
+	ContextHandle []byte `smb:"fixed:20"`
+	ReturnCode    uint32
 }
 
 // opnum
@@ -145,12 +119,12 @@ const (
 //dwDesiredAccess：一个值，指定对数据库的访问。这必须是第 3.1.4 节中指定的值之一。
 //客户端还必须具有 SC_MANAGER_CONNECT 访问权限。
 //lpScHandle：一种 LPSC_RPC_HANDLE 数据类型，用于定义新打开的 SCM 数据库的句柄。
-func (c *Client) NewOpenSCManagerWRequest(treeId uint32, fileId []byte) PDUHeader {
-	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = c.GetMessageId()
-	pduHeader.SMB2Header.SessionId = c.GetSessionId()
-	pduHeader.SMB2Header.TreeId = treeId
-	pduHeader.FileId = fileId
+func NewOpenSCManagerWRequest() MSRPCRequestHeaderStruct {
+	header := NewMSRPCHeader()
+	//header.CallId = 2
+	header.PacketType = PDURequest
+	header.PacketFlags = PDUFault
+	// 服务请求
 	machinename := string(util.Random(6)) + "\x00"
 	databaseName := "ServicesActive\x00"
 	buffer := OpenSCManagerWStruct{
@@ -166,21 +140,14 @@ func (c *Client) NewOpenSCManagerWRequest(treeId uint32, fileId []byte) PDUHeade
 		},
 		AccessMask: SC_MANAGER_CREATE_SERVICE | SC_MANAGER_CONNECT,
 	}
-	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
-	pduHeader.Buffer = PDUExtHeaderStruct{
-		Version:            5,
-		VersionMinor:       0,
-		PacketType:         PDURequest,
-		PacketFlags:        PDUFault,
-		DataRepresentation: 16,
-		FragLength:         uint16(fragLength),
-		AuthLength:         0,
-		CallId:             1,
-		ContextId:          0,
-		OpNum:              ROpenSCManagerW,
-		Buffer:             buffer,
+	fragLength := 24 + util.SizeOfStruct(buffer)
+	header.FragLength = uint16(fragLength)
+	return MSRPCRequestHeaderStruct{
+		MSRPCHeaderStruct: header,
+		ContextId:         0,
+		OpNum:             ROpenSCManagerW,
+		Buffer:            buffer,
 	}
-	return pduHeader
 }
 
 func NewOpenSCManagerWResponse() OpenSCManagerWResponse {
@@ -194,34 +161,25 @@ func NewOpenSCManagerWResponse() OpenSCManagerWResponse {
 type ROpenServiceWRequestStruct struct {
 	ContextHandle []byte `smb:"fixed:20"` //OpenSCManagerW 句柄
 	ServiceName   serviceName
-	//Reserved      uint8
-	AccessMask uint32
+	AccessMask    uint32
 }
 
 type ROpenServiceWResponseStruct struct {
-	smb2.ReadResponseStruct
-	Version            uint8
-	VersionMinor       uint8
-	PacketType         uint8
-	PacketFlags        uint8
-	DataRepresentation uint32
-	FragLength         uint16
-	AuthLength         uint16
-	CallId             uint32
-	AllocHint          uint32
-	ContextId          uint16
-	CancelCount        uint8
-	Reserved           uint8
-	ContextHandle      []byte `smb:"fixed:20"`
-	ReturnCode         uint32
+	MSRPCHeaderStruct
+	AllocHint     uint32
+	ContextId     uint16
+	CancelCount   uint8
+	Reserved      uint8
+	ContextHandle []byte `smb:"fixed:20"`
+	ReturnCode    uint32
 }
 
-func (c *Client) NewROpenServiceWRequest(treeId uint32, fileId, contextHandle []byte, servicename string) PDUHeader {
-	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = c.GetMessageId()
-	pduHeader.SMB2Header.SessionId = c.GetSessionId()
-	pduHeader.SMB2Header.TreeId = treeId
-	pduHeader.FileId = fileId
+// 初始化打开服务请求
+func NewROpenServiceWRequest(contextHandle []byte, servicename string) MSRPCRequestHeaderStruct {
+	header := NewMSRPCHeader()
+	//header.CallId = 3
+	header.PacketType = PDURequest
+	header.PacketFlags = PDUFault
 	serName := servicename + "\x00"
 	buffer := ROpenServiceWRequestStruct{
 		ContextHandle: contextHandle,
@@ -233,20 +191,13 @@ func (c *Client) NewROpenServiceWRequest(treeId uint32, fileId, contextHandle []
 		AccessMask: SERVICE_ALL_ACCESS,
 	}
 	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
-	pduHeader.Buffer = PDUExtHeaderStruct{
-		Version:            5,
-		VersionMinor:       0,
-		PacketType:         PDURequest,
-		PacketFlags:        PDUFault,
-		DataRepresentation: 16,
-		FragLength:         uint16(fragLength),
-		AuthLength:         0,
-		CallId:             2,
-		ContextId:          0,
-		OpNum:              ROpenServiceW,
-		Buffer:             buffer,
+	header.FragLength = uint16(fragLength)
+	return MSRPCRequestHeaderStruct{
+		MSRPCHeaderStruct: header,
+		ContextId:         0,
+		OpNum:             ROpenServiceW,
+		Buffer:            buffer,
 	}
-	return pduHeader
 }
 
 func NewROpenServiceWResponse() ROpenServiceWResponseStruct {
@@ -301,22 +252,14 @@ type binaryPathName struct {
 
 // RCreateServiceW响应结构
 type RCreateServiceWResponseStruct struct {
-	smb2.ReadResponseStruct
-	Version            uint8
-	VersionMinor       uint8
-	PacketType         uint8
-	PacketFlags        uint8
-	DataRepresentation uint32
-	FragLength         uint16
-	AuthLength         uint16
-	CallId             uint32
-	AllocHint          uint32
-	ContextId          uint16
-	CancelCount        uint8
-	Reserved           uint8
-	TagId              uint32
-	ContextHandle      []byte `smb:"fixed:20"`
-	ReturnCode         uint32
+	MSRPCHeaderStruct
+	AllocHint     uint32
+	ContextId     uint16
+	CancelCount   uint8
+	Reserved      uint8
+	TagId         uint32
+	ContextHandle []byte `smb:"fixed:20"`
+	ReturnCode    uint32
 }
 
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-scmr/6a8ca926-9477-4dd4-b766-692fab07227e
@@ -346,12 +289,11 @@ const (
 	SERVICE_ERROR_CRITICAL = 0x00000003
 )
 
-func (c *Client) NewRCreateServiceWRequest(treeId uint32, fileId, contextHandle []byte, servicename, uploadPathFile string) PDUHeader {
-	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = c.GetMessageId()
-	pduHeader.SMB2Header.SessionId = c.GetSessionId()
-	pduHeader.SMB2Header.TreeId = treeId
-	pduHeader.FileId = fileId
+func NewRCreateServiceWRequest(contextHandle []byte, servicename, uploadPathFile string) MSRPCRequestHeaderStruct {
+	header := NewMSRPCHeader()
+	//header.CallId = 4
+	header.PacketType = PDURequest
+	header.PacketFlags = PDUFault
 	serName := servicename + "\x00"
 	uploadpathFile := uploadPathFile + "\x00"
 	buffer := RCreateServiceWRequestStruct{
@@ -377,20 +319,13 @@ func (c *Client) NewRCreateServiceWRequest(treeId uint32, fileId, contextHandle 
 		},
 	}
 	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
-	pduHeader.Buffer = PDUExtHeaderStruct{
-		Version:            5,
-		VersionMinor:       0,
-		PacketType:         PDURequest,
-		PacketFlags:        PDUFault,
-		DataRepresentation: 16,
-		FragLength:         uint16(fragLength),
-		AuthLength:         0,
-		CallId:             3,
-		ContextId:          0,
-		OpNum:              RCreateServiceW,
-		Buffer:             buffer,
+	header.FragLength = uint16(fragLength)
+	return MSRPCRequestHeaderStruct{
+		MSRPCHeaderStruct: header,
+		ContextId:         0,
+		OpNum:             RCreateServiceW,
+		Buffer:            buffer,
 	}
-	return pduHeader
 }
 
 func NewRCreateServiceWResponse() RCreateServiceWResponseStruct {
@@ -408,56 +343,78 @@ type RStartServiceWRequestStruct struct {
 }
 
 type RStartServiceWResponseStruct struct {
-	smb2.ReadResponseStruct
-	Version            uint8
-	VersionMinor       uint8
-	PacketType         uint8
-	PacketFlags        uint8
-	DataRepresentation uint32
-	FragLength         uint16
-	AuthLength         uint16
-	CallId             uint32
-	AllocHint          uint32
-	ContextId          uint16
-	CancelCount        uint8
-	Reserved           uint8
-	StubData           uint32
+	MSRPCHeaderStruct
+	AllocHint   uint32
+	ContextId   uint16
+	CancelCount uint8
+	Reserved    uint8
+	StubData    uint32
 }
 
 // 启动服务封装
-func (c *Client) NewRStartServiceWRequest(treeId uint32, fileId, contextHandle []byte) PDUHeader {
-	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = c.GetMessageId()
-	pduHeader.SMB2Header.SessionId = c.GetSessionId()
-	pduHeader.SMB2Header.Credits = 127
-	pduHeader.SMB2Header.TreeId = treeId
-	pduHeader.FileId = fileId
+func NewRStartServiceWRequest(contextHandle []byte) MSRPCRequestHeaderStruct {
+	header := NewMSRPCHeader()
+	//header.CallId = 5
+	header.PacketType = PDURequest
+	header.PacketFlags = PDUFault
 	argv := encoder.ToUnicode(string(make([]byte, 4)))
 	buffer := RStartServiceWRequestStruct{
 		ContextHandle: contextHandle,
 		Argc:          0,
 		Argv:          argv[:4],
 	}
-	fragLength := 24 + util.SizeOfStruct(buffer)
-	pduHeader.Buffer = PDUExtHeaderStruct{
-		Version:            5,
-		VersionMinor:       0,
-		PacketType:         PDURequest,
-		PacketFlags:        PDUFault,
-		DataRepresentation: 16,
-		FragLength:         uint16(fragLength),
-		AuthLength:         0,
-		CallId:             4,
-		ContextId:          0,
-		OpNum:              RStartServiceW,
-		Buffer:             buffer,
+	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
+	header.FragLength = uint16(fragLength)
+	return MSRPCRequestHeaderStruct{
+		MSRPCHeaderStruct: header,
+		ContextId:         0,
+		OpNum:             RStartServiceW,
+		Buffer:            buffer,
 	}
-	return pduHeader
 }
 
-// 启动服务响应封装
+// 启动服务响应
 func NewRStartServiceWResponse() RStartServiceWResponseStruct {
 	return RStartServiceWResponseStruct{}
+}
+
+// 删除服务结构
+// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-scmr/6744cdb8-f162-4be0-bb31-98996b6495be
+type RDeleteServiceRequestStruct struct {
+	ContextHandle []byte `smb:"fixed:20"` //20字节，创建服务返回的句柄
+}
+
+type RDeleteServiceResponseStruct struct {
+	MSRPCHeaderStruct
+	AllocHint   uint32
+	ContextId   uint16
+	CancelCount uint8
+	Reserved    uint8
+	ReturnCode  uint32
+}
+
+// 删除服务封装
+func NewRDeleteServiceRequest(contextHandle []byte) MSRPCRequestHeaderStruct {
+	header := NewMSRPCHeader()
+	//header.CallId = 5
+	header.PacketType = PDURequest
+	header.PacketFlags = PDUFault
+	buffer := RDeleteServiceRequestStruct{
+		ContextHandle: contextHandle,
+	}
+	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
+	header.FragLength = uint16(fragLength)
+	return MSRPCRequestHeaderStruct{
+		MSRPCHeaderStruct: header,
+		ContextId:         0,
+		OpNum:             RDeleteService,
+		Buffer:            buffer,
+	}
+}
+
+// 删除服务响应
+func NewRDeleteServiceResponse() RDeleteServiceResponseStruct {
+	return RDeleteServiceResponseStruct{}
 }
 
 // 关闭服务句柄
@@ -466,45 +423,30 @@ type RCloseServiceHandleRequestStruct struct {
 }
 
 type RCloseServiceHandleResponseStruct struct {
-	smb2.ReadResponseStruct
-	Version            uint8
-	VersionMinor       uint8
-	PacketType         uint8
-	PacketFlags        uint8
-	DataRepresentation uint32
-	FragLength         uint16
-	AuthLength         uint16
-	CallId             uint32
-	AllocHint          uint32
-	ContextId          uint16
-	CancelCount        uint8
-	Reserved           uint8
-	ContextHandle      []byte `smb:"fixed:20"`
-	ReturnCode         uint32
+	MSRPCHeaderStruct
+	AllocHint     uint32
+	ContextId     uint16
+	CancelCount   uint8
+	Reserved      uint8
+	ContextHandle []byte `smb:"fixed:20"`
+	ReturnCode    uint32
 }
 
-func (c *Client) NewRCloseServiceHandleRequest(treeId uint32, fileId, contextHandle []byte) PDUHeader {
-	pduHeader := NewPDUHeader()
-	pduHeader.SMB2Header.MessageId = c.GetMessageId()
-	pduHeader.SMB2Header.SessionId = c.GetSessionId()
-	pduHeader.SMB2Header.TreeId = treeId
-	pduHeader.FileId = fileId
+// 初始化关闭服务句柄
+func NewRCloseServiceHandleRequest(contextHandle []byte) MSRPCRequestHeaderStruct {
+	header := NewMSRPCHeader()
+	//header.CallId = 6
+	header.PacketType = PDURequest
+	header.PacketFlags = PDUFault
 	buffer := RCloseServiceHandleRequestStruct{ContextHandle: contextHandle}
-	fragLength := 24 + util.SizeOfStruct(buffer)
-	pduHeader.Buffer = PDUExtHeaderStruct{
-		Version:            5,
-		VersionMinor:       0,
-		PacketType:         PDURequest,
-		PacketFlags:        PDUFault,
-		DataRepresentation: 16,
-		FragLength:         uint16(fragLength),
-		AuthLength:         0,
-		CallId:             6,
-		ContextId:          0,
-		OpNum:              RCloseServiceHandle,
-		Buffer:             buffer,
+	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
+	header.FragLength = uint16(fragLength)
+	return MSRPCRequestHeaderStruct{
+		MSRPCHeaderStruct: header,
+		ContextId:         0,
+		OpNum:             RCloseServiceHandle,
+		Buffer:            buffer,
 	}
-	return pduHeader
 }
 
 func NewRCloseServiceHandleResponse() RCloseServiceHandleResponseStruct {

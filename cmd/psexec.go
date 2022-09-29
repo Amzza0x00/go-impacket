@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"go-impacket/pkg"
 	"go-impacket/pkg/common"
-	v5 "go-impacket/pkg/dcerpc/v5"
+	DCERPCv5 "go-impacket/pkg/dcerpc/v5"
 	"go-impacket/pkg/smb/smb2"
 	"go-impacket/pkg/util"
 	"log"
@@ -75,12 +75,9 @@ func main() {
 	} else {
 		serviceName = service
 	}
-	rpc, _ := v5.SMBTransport()
+	rpc, _ := DCERPCv5.SMBTransport()
 	rpc.Client = *session
 	// 创建服务并启动
-	servicename, err := rpc.ServiceInstall(serviceName, file, path)
-	if err != nil {
-		session.Debug("", err)
-	}
+	servicename, _, _ := rpc.ServiceInstall(serviceName, file, path)
 	fmt.Printf("[+] Service name is [%s]\n", servicename)
 }

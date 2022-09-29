@@ -45,20 +45,20 @@ const (
 )
 
 // SMB2标准头结构
-type SMB2Header struct {
-	ProtocolId    []byte `smb:"fixed:4"` //4字节，协议标识符，必须设置为 0x424D53FE
-	StructureSize uint16 //2字节，协议结构大小，必修设置为64
-	CreditCharge  uint16 //2字节，smb2.0.2发送方必须设置为0
-	Status        uint32 //4字节，客户端设置0，服务端返回
-	Command       uint16 //2字节，需要包含smb2有效命令
-	Credits       uint16 //2字节，标识客户端请求信用数
-	Flags         uint32 //4字节，标识如何处理请求
-	NextCommand   uint32 //4字节，复合请求使用，不用归零
-	MessageId     uint64 //8字节，消息唯一标识符
-	Reserved      uint32 //2字节，保留字段，归零
-	TreeId        uint32 //4字节，标识树连接，必须设置0
-	SessionId     uint64 //8字节，会话唯一标识符，必须设置0
-	Signature     []byte `smb:"fixed:16"` //16字节，消息未签名则设0
+type SMB2PacketStruct struct {
+	ProtocolId            []byte `smb:"fixed:4"` //4字节，协议标识符，必须设置为 0x424D53FE
+	StructureSize         uint16 //2字节，协议结构大小，必修设置为64
+	CreditCharge          uint16 //2字节，smb2.0.2发送方必须设置为0
+	Status                uint32 //4字节，客户端设置0，服务端返回
+	Command               uint16 //2字节，需要包含smb2有效命令
+	CreditRequestResponse uint16 //2字节，标识客户端请求信用数
+	Flags                 uint32 //4字节，标识如何处理请求
+	NextCommand           uint32 //4字节，复合请求使用，不用归零
+	MessageId             uint64 //8字节，消息唯一标识符
+	Reserved              uint32 //2字节，保留字段，归零
+	TreeId                uint32 //4字节，标识树连接，必须设置0
+	SessionId             uint64 //8字节，会话唯一标识符，必须设置0
+	Signature             []byte `smb:"fixed:16"` //16字节，消息未签名则设0
 }
 
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/e14db7ff-763a-4263-8b10-0c3944f52fc5
@@ -73,7 +73,7 @@ const (
 
 // SMB2 Negotiate 请求头结构
 type SMB2NegotiateRequestStruct struct {
-	SMB2Header
+	SMB2PacketStruct
 	StructureSize   uint16   //2字节，客户端必须设置36
 	DialectCount    uint16   `smb:"count:Dialects"` //2字节，必须大于0
 	SecurityMode    uint16   //2字节，设置是否启用SMB签名
@@ -87,7 +87,7 @@ type SMB2NegotiateRequestStruct struct {
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/63abf97c-0d09-47e2-88d6-6bfa552949a5
 // SMB2 Negotiate 响应头结构
 type SMB2NegotiateResponseStruct struct {
-	SMB2Header
+	SMB2PacketStruct
 	StructureSize        uint16            //2字节，客户端必须设置36
 	SecurityMode         uint16            //2字节，设置是否启用SMB签名
 	DialectRevision      uint16            //2字节，SMB协议号
@@ -108,7 +108,7 @@ type SMB2NegotiateResponseStruct struct {
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/5a3c2c28-d6b0-48ed-b917-a86b2ca4575f
 // 质询请求结构体
 type SMB2SessionSetupRequestStruct struct {
-	SMB2Header
+	SMB2PacketStruct
 	StructureSize        uint16
 	Flags                byte
 	SecurityMode         byte
@@ -123,7 +123,7 @@ type SMB2SessionSetupRequestStruct struct {
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/0324190f-a31b-4666-9fa9-5c624273a694
 // 质询响应结构体
 type SMB2SessionSetupResponseStruct struct {
-	SMB2Header
+	SMB2PacketStruct
 	StructureSize        uint16
 	Flags                uint16
 	SecurityBufferOffset uint16 `smb:"offset:SecurityBlob"`
@@ -133,7 +133,7 @@ type SMB2SessionSetupResponseStruct struct {
 
 // 质询请求认证结构体、需要带上响应
 type SMB2SessionSetup2RequestStruct struct {
-	SMB2Header
+	SMB2PacketStruct
 	StructureSize        uint16
 	Flags                byte
 	SecurityMode         byte

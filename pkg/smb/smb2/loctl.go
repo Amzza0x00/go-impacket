@@ -35,7 +35,7 @@ const (
 
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/5c03c9d6-15de-48a2-9835-8fb37f8a79d8
 type IOCTLRequestStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize     uint16
 	Reserved          uint16
 	Function          uint32
@@ -52,23 +52,23 @@ type IOCTLRequestStruct struct {
 }
 
 func (c *Client) NewIOCTLRequest(treeId uint32) IOCTLRequestStruct {
-	smb2Header := NewSMB2Header()
+	smb2Header := NewSMB2Packet()
 	smb2Header.Command = smb.SMB2_IOCTL
 	smb2Header.CreditCharge = 1
 	smb2Header.MessageId = c.GetMessageId()
 	smb2Header.SessionId = c.GetSessionId()
 	smb2Header.TreeId = treeId
-	smb2Header.Credits = 127
+	smb2Header.CreditRequestResponse = 127
 	return IOCTLRequestStruct{
-		SMB2Header:    smb2Header,
-		StructureSize: 57,
-		GUIDHandle:    make([]byte, 16),
+		SMB2PacketStruct: smb2Header,
+		StructureSize:    57,
+		GUIDHandle:       make([]byte, 16),
 	}
 }
 
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/f70eccb6-e1be-4db8-9c47-9ac86ef18dbb
 type IOCTLResponseStruct struct {
-	smb.SMB2Header
+	smb.SMB2PacketStruct
 	StructureSize uint16
 	Reserved      uint16
 	Function      uint32

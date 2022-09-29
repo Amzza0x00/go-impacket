@@ -15,8 +15,6 @@ const (
 	STATUS_INVALID_PARAMETER        = 0xC000000D
 	STATUS_OBJECT_NAME_NOT_FOUND    = 0xC0000034
 	STATUS_PIPE_BROKEN              = 0xC000014B
-	NCA_S_FAULT_NDR                 = 0x0000006f7
-	ERROR_FILE_NOT_FOUND            = 2
 )
 
 var StatusMap = map[uint32]string{
@@ -31,6 +29,4 @@ var StatusMap = map[uint32]string{
 	STATUS_INVALID_PARAMETER:        "An invalid parameter was passed to a service or function.",
 	STATUS_OBJECT_NAME_NOT_FOUND:    "The object name is not found.",
 	STATUS_PIPE_BROKEN:              "The pipe operation has failed because the other end of the pipe has been closed.",
-	NCA_S_FAULT_NDR:                 "The stub data is invalid, doesn't match with the IDL definition",
-	ERROR_FILE_NOT_FOUND:            "The system cannot find the file specified.",
 }
