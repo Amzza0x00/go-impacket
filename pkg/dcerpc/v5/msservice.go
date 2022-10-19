@@ -79,14 +79,14 @@ func (c *SMBClient) OpenSvcManager(treeId, callId uint32) (fileid, handler []byt
 	openSvcManagerRequest := NewOpenSCManagerWRequest()
 	openSvcManagerRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, openSvcManagerRequest)
-	_, err = c.Send(req)
+	_, err = c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return nil, nil, err
 	}
 	c.Debug("Read OpenSCManagerW response", nil)
 	reqRead := c.NewReadRequest(treeId, fileId)
-	buf, err := c.Send(reqRead)
+	buf, err := c.SMBSend(reqRead)
 	if err != nil {
 		c.Debug("", err)
 		return nil, nil, err
@@ -123,14 +123,14 @@ func (c *SMBClient) OpenService(treeId uint32, fileId, contextHandle []byte, ser
 	rOpenServiceRequest := NewROpenServiceWRequest(contextHandle, servicename)
 	rOpenServiceRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rOpenServiceRequest)
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return err
 	}
 	c.Debug("Read svcctl OpenServiceW response", nil)
 	reqRead := c.NewReadRequest(treeId, fileId)
-	buf, err = c.Send(reqRead)
+	buf, err = c.SMBSend(reqRead)
 	if err != nil {
 		c.Debug("", err)
 		return err
@@ -165,14 +165,14 @@ func (c *SMBClient) CreateService(treeId uint32, fileId, contextHandle []byte, s
 	rCreateServiceWRequest := NewRCreateServiceWRequest(contextHandle, servicename, uploadPathFile)
 	rCreateServiceWRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rCreateServiceWRequest)
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return nil, err
 	}
 	c.Debug("Read svcctl RCreateServiceW response", nil)
 	reqRead := c.NewReadRequest(treeId, fileId)
-	buf, err = c.Send(reqRead)
+	buf, err = c.SMBSend(reqRead)
 	if err != nil {
 		c.Debug("", err)
 		return nil, err
@@ -209,14 +209,14 @@ func (c *SMBClient) StartService(treeId uint32, fileId, serviceHandle []byte, ca
 	rStartServiceWRequest := NewRStartServiceWRequest(serviceHandle)
 	rStartServiceWRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rStartServiceWRequest)
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return err
 	}
 	c.Debug("Read svcctl RStartServiceW response", nil)
 	reqRead := c.NewReadRequest(treeId, fileId)
-	buf, err = c.Send(reqRead)
+	buf, err = c.SMBSend(reqRead)
 	if err != nil {
 		c.Debug("", err)
 		return err
@@ -250,14 +250,14 @@ func (c *SMBClient) DeleteService(treeId uint32, fileId, serviceHandle []byte, c
 	rDeleteServiceRequest := NewRDeleteServiceRequest(serviceHandle)
 	rDeleteServiceRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rDeleteServiceRequest)
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return err
 	}
 	c.Debug("Read svcctl RDeleteService response", nil)
 	reqRead := c.NewReadRequest(treeId, fileId)
-	buf, err = c.Send(reqRead)
+	buf, err = c.SMBSend(reqRead)
 	if err != nil {
 		c.Debug("", err)
 		return err
@@ -292,14 +292,14 @@ func (c *SMBClient) CloseService(treeId uint32, fileId, serviceHandle []byte, ca
 	rCloseServiceHandleRequest := NewRCloseServiceHandleRequest(serviceHandle)
 	rCloseServiceHandleRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rCloseServiceHandleRequest)
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return err
 	}
 	c.Debug("Read svcctl RCloseServiceHandle response", nil)
 	reqRead := c.NewReadRequest(treeId, fileId)
-	buf, err = c.Send(reqRead)
+	buf, err = c.SMBSend(reqRead)
 	if err != nil {
 		c.Debug("", err)
 		return err

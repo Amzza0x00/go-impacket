@@ -49,13 +49,12 @@ func (c *Client) Debug(msg string, err error) {
 	}
 }
 
-func (c *Client) Send(req interface{}) (res []byte, err error) {
+func (c *Client) SMBSend(req interface{}) (res []byte, err error) {
 	buf, err := encoder.Marshal(req)
 	if err != nil {
 		c.Debug("", err)
 		return nil, err
 	}
-
 	b := new(bytes.Buffer)
 	if err = binary.Write(b, binary.BigEndian, uint32(len(buf))); err != nil {
 		c.Debug("", err)
@@ -68,7 +67,6 @@ func (c *Client) Send(req interface{}) (res []byte, err error) {
 		return
 	}
 	rw.Flush()
-
 	var size uint32
 	if err = binary.Read(rw, binary.BigEndian, &size); err != nil {
 		c.Debug("", err)
@@ -77,7 +75,6 @@ func (c *Client) Send(req interface{}) (res []byte, err error) {
 	if size > 0x00FFFFFF {
 		return nil, errors.New("Invalid NetBIOS Session message")
 	}
-
 	data := make([]byte, size)
 	l, err := io.ReadFull(rw, data)
 	if err != nil {
@@ -87,14 +84,31 @@ func (c *Client) Send(req interface{}) (res []byte, err error) {
 	if uint32(l) != size {
 		return nil, errors.New("Message size invalid")
 	}
-
 	//protID := data[0:4]
 	//switch string(protID) {
 	//default:
 	//	return nil, errors.New("Protocol Not Implemented")
 	//case ProtocolSMB:
 	//}
+	c.messageId++
+	return data, nil
+}
 
+func (c *Client) TCPSend(req interface{}) (res []byte, err error) {
+	buf, err := encoder.Marshal(req)
+	if err != nil {
+		c.Debug("", err)
+		return nil, err
+	}
+	c.Debug("Raw:\n"+hex.Dump(buf), nil)
+	rw := bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
+	if _, err = rw.Write(buf); err != nil {
+		c.Debug("", err)
+		return
+	}
+	rw.Flush()
+	data := make([]byte, 2048)
+	c.conn.Read(data)
 	c.messageId++
 	return data, nil
 }

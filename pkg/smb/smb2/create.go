@@ -199,7 +199,7 @@ func NewCreateResponse() CreateResponseStruct {
 func (c *Client) CreateRequest(treeId uint32, filename string, r CreateRequestStruct) (fileId []byte, err error) {
 	c.Debug("Sending Create file request ["+filename+"]", nil)
 	req := c.NewCreateRequest(treeId, filename, r)
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return nil, err

@@ -253,8 +253,6 @@ func getFieldCountByName(fieldName string, meta *Metadata) (uint64, error) {
 	case reflect.Uint16:
 		ret = uint64(binary.Size(field.Interface().(uint16)))
 	case reflect.Uint32:
-		//fmt.Println("ret:", uint64(field.Interface().(uint32)))
-		//fmt.Println("ret:", uint64(binary.Size(field.Interface().(uint32))-binary.Size(uint32(l))))
 		ret = uint64(binary.Size(field.Interface().(uint32)))
 	case reflect.Uint64:
 		ret = uint64(binary.Size(field.Interface().(uint64)))

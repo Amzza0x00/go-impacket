@@ -102,7 +102,7 @@ Loop:
 			}
 			fileOffset += nr
 			i++
-			buf, err := c.Send(req)
+			buf, err := c.SMBSend(req)
 			if err != nil {
 				c.Debug("", err)
 				return err
@@ -125,7 +125,7 @@ Loop:
 func (c *Client) WritePipeRequest(treeId uint32, buffer, fileId []byte) error {
 	c.Debug("Sending Write pipe request", nil)
 	req := c.NewWriteRequest(treeId, fileId, buffer)
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return err

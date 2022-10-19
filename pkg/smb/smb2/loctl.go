@@ -125,7 +125,7 @@ func (c *Client) ConnectAndWriteStdInPipes(pipename string) (treeid uint32, pipe
 	FSCTLPIPEWAITRequestIn.Timeout = timeout
 	IOCTLRequest.Buffer = FSCTLPIPEWAITRequestIn
 	c.Debug("Sending Ioctl stdin pipe request ["+pipename+"]", nil)
-	buf, err := c.Send(IOCTLRequest)
+	buf, err := c.SMBSend(IOCTLRequest)
 	if err != nil {
 		c.Debug("", err)
 		return 0, nil, err
@@ -169,7 +169,7 @@ func (c *Client) ConnectAndBindNamedPipes(pipename string) (stdinpipe, stdoutpip
 	FSCTLPIPEWAITRequestIn.Timeout = timeout
 	IOCTLRequest.Buffer = FSCTLPIPEWAITRequestIn
 	c.Debug("Sending Ioctl stdin pipe request ["+pipeIn+"]", nil)
-	buf, err := c.Send(IOCTLRequest)
+	buf, err := c.SMBSend(IOCTLRequest)
 	if err != nil {
 		c.Debug("", err)
 		//return nil, err
@@ -187,7 +187,7 @@ func (c *Client) ConnectAndBindNamedPipes(pipename string) (stdinpipe, stdoutpip
 	FSCTLPIPEWAITRequestOut.Timeout = timeout
 	IOCTLRequest.Buffer = FSCTLPIPEWAITRequestOut
 	c.Debug("Sending Ioctl stdout pipe request ["+pipeOut+"]", nil)
-	buf, err = c.Send(IOCTLRequest)
+	buf, err = c.SMBSend(IOCTLRequest)
 	if err != nil {
 		c.Debug("", err)
 		//return nil, err
@@ -205,7 +205,7 @@ func (c *Client) ConnectAndBindNamedPipes(pipename string) (stdinpipe, stdoutpip
 	FSCTLPIPEWAITRequestErr.Timeout = timeout
 	IOCTLRequest.Buffer = FSCTLPIPEWAITRequestErr
 	c.Debug("Sending Ioctl stderr pipe request ["+pipeErr+"]", nil)
-	buf, err = c.Send(IOCTLRequest)
+	buf, err = c.SMBSend(IOCTLRequest)
 	if err != nil {
 		c.Debug("", err)
 		//return nil, err

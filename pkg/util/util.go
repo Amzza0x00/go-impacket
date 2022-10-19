@@ -3,9 +3,12 @@ package util
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"io/ioutil"
+	"net"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -104,4 +107,90 @@ func Random(n int) []byte {
 		bytes[i] = alpha[b%byte(len(alpha))]
 	}
 	return bytes
+}
+
+func DealCIDR(cidr string) ([]string, error) {
+	ip, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, err
+	}
+	var ips []string
+	// 在循环里创建的所有函数变量共享相同的变量。
+	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); ip_tools(ip) {
+		ips = append(ips, ip.String())
+	}
+	return ips[1 : len(ips)-1], nil
+}
+
+func ip_tools(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+}
+
+func DealAsterisk(s string) ([]string, error) {
+	i := strings.Count(s, "*")
+
+	switch i {
+	case 1:
+		return DealCIDR(strings.Replace(s, "*", "1", -1) + "/24")
+	case 2:
+		return DealCIDR(strings.Replace(s, "*", "1", -1) + "/16")
+	case 3:
+		return DealCIDR(strings.Replace(s, "*", "1", -1) + "/8")
+	}
+
+	return nil, errors.New("wrong Asterisk")
+}
+
+func DealHyphen(s string) ([]string, error) {
+	tmp := strings.Split(s, ".")
+	if len(tmp) == 4 {
+		iprange_tmp := strings.Split(tmp[3], "-")
+		var ips []string
+		tail, _ := strconv.Atoi(iprange_tmp[1])
+		for head, _ := strconv.Atoi(iprange_tmp[0]); head <= tail; head++ {
+			ips = append(ips, tmp[0]+"."+tmp[1]+"."+tmp[2]+"."+strconv.Itoa(head))
+		}
+		return ips, nil
+	} else {
+		return nil, errors.New("wrong Hyphen")
+	}
+
+}
+
+func IpParse(s string) ([]string, error) {
+	ipStrings := strings.Split(strings.Trim(s, ","), ",")
+	var ips []string
+	for i := 0; i < len(ipStrings); i++ {
+		if strings.Contains(ipStrings[i], "*") {
+			// 192.168.0.*
+			ips_tmp, err := DealAsterisk(ipStrings[i])
+			if err != nil {
+				return nil, nil
+			}
+			ips = append(ips, ips_tmp...)
+		} else if strings.Contains(ipStrings[i], "/") {
+			// 192.168.0.1/24
+			ips_tmp, err := DealCIDR(ipStrings[i])
+			if err != nil {
+				return nil, nil
+			}
+			ips = append(ips, ips_tmp...)
+		} else if strings.Contains(ipStrings[i], "-") {
+			// 192.668.0.1-255
+			ips_tmp, err := DealHyphen(ipStrings[i])
+			if err != nil {
+				return nil, nil
+			}
+			ips = append(ips, ips_tmp...)
+		} else {
+			// singel ip
+			ips = append(ips, ipStrings[i])
+		}
+	}
+	return ips, nil
 }

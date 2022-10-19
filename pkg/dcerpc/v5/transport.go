@@ -1,8 +1,10 @@
 package v5
 
 import (
+	"fmt"
 	"go-impacket/pkg/common"
 	"go-impacket/pkg/smb/smb2"
+	"net"
 )
 
 type SMBClient struct {
@@ -20,7 +22,19 @@ func SMBTransport() (client *SMBClient, err error) {
 }
 
 // tcp连接封装
+func NewTCPSession(opt common.ClientOptions, debug bool) (client *TCPClient, err error) {
+	address := fmt.Sprintf("%s:%d", opt.Host, opt.Port)
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return
+	}
+	client = &TCPClient{}
+	client.WithOptions(&opt)
+	client.WithConn(conn)
+	client.WithDebug(debug)
+	return client, nil
+}
+
 func TCPTransport() (client *TCPClient, err error) {
-	//session, err := smb2.NewSession(options, debug)
 	return &TCPClient{}, nil
 }

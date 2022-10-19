@@ -84,7 +84,7 @@ func (c *Client) ReadRequest(treeId uint32, fileId []byte) (info []byte, err err
 	c.Debug("Sending Read request", nil)
 	req := c.NewReadRequest(treeId, fileId)
 	req.ReadLength = 1024
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return nil, err

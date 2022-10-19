@@ -171,14 +171,14 @@ func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, uuid string, version
 	}
 	req := c.NewWriteRequest(treeId, fileId, bind)
 	c.Debug("Sending rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
-	_, err = c.Send(req)
+	_, err = c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return err
 	}
 	c.Debug("Read rpc response", nil)
 	req1 := c.NewReadRequest(treeId, fileId)
-	buf, err1 := c.Send(req1)
+	buf, err1 := c.SMBSend(req1)
 	if err1 != nil {
 		c.Debug("", err1)
 		return err1
@@ -202,6 +202,40 @@ func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, uuid string, version
 }
 
 // tcp->函数绑定
-func (c *TCPClient) MSRPCBind() (err error) {
+func (c *TCPClient) MSRPCBind(uuid string, version uint32) (err error) {
+	header := NewMSRPCHeader()
+	header.FragLength = 72
+	header.CallId = 1
+	header.PacketType = PDUBind
+	header.PacketFlags = PDUFlagPending
+	bind := MSRPCBindStruct{
+		MSRPCHeaderStruct: header,
+		MaxXmitFrag:       4280,
+		MaxRecvFrag:       4280,
+		AssocGroup:        0,
+		NumCtxItems:       1,
+		CtxItem: CtxEItemStruct{
+			NumTransItems: 1,
+			AbstractSyntax: SyntaxIDStruct{
+				UUID:    util.PDUUuidFromBytes(uuid),
+				Version: version,
+			},
+			TransferSyntax: SyntaxIDStruct{
+				UUID:    util.PDUUuidFromBytes(NDRSyntax),
+				Version: 2,
+			},
+		},
+	}
+	c.Debug("Sending rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
+	buf, err := c.TCPSend(bind)
+	res := NewMSRPCBindAck()
+	c.Debug("Unmarshalling rpc bind", nil)
+	if err = encoder.Unmarshal(buf, &res); err != nil {
+		c.Debug("Raw:\n"+hex.Dump(buf), err)
+	}
+	if res.NumResults < 1 {
+		return errors.New("Failed to rpc bind code : [" + ms.UUIDMap[uuid] + "] ")
+	}
+	c.Debug("Completed rpc bind : ["+ms.UUIDMap[uuid]+"]", nil)
 	return err
 }

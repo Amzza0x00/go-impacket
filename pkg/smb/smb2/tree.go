@@ -106,7 +106,7 @@ func (c *Client) TreeConnect(name string) (treeId uint32, err error) {
 		c.Debug("", err)
 		return 0, err
 	}
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return 0, err
@@ -153,7 +153,7 @@ func (c *Client) TreeDisconnect(name string) error {
 		c.Debug("", err)
 		return err
 	}
-	buf, err := c.Send(req)
+	buf, err := c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
 		return err

@@ -178,7 +178,7 @@ func (c *Client) NegotiateProtocol() (err error) {
 	// 第一步 发送协商请求
 	c.Debug("Sending Negotiate request", nil)
 	negReq := c.NewNegotiateRequest()
-	buf, err := c.Send(negReq)
+	buf, err := c.SMBSend(negReq)
 	if err != nil {
 		c.Debug("", err)
 		return err
@@ -248,7 +248,7 @@ func (c *Client) NegotiateProtocol() (err error) {
 		return err
 	}
 
-	buf, err = c.Send(ssreq)
+	buf, err = c.SMBSend(ssreq)
 	if err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
 		return err
@@ -307,7 +307,7 @@ func (c *Client) NegotiateProtocol() (err error) {
 		return err
 	}
 
-	buf, err = c.Send(ss2req)
+	buf, err = c.SMBSend(ss2req)
 	if err != nil {
 		c.Debug("", err)
 		return err
