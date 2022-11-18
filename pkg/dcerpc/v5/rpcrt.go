@@ -3,10 +3,10 @@ package v5
 import (
 	"encoding/hex"
 	"errors"
-	"go-impacket/pkg/encoder"
-	"go-impacket/pkg/ms"
-	"go-impacket/pkg/smb/smb2"
-	"go-impacket/pkg/util"
+	"github.com/Amzza0x00/go-impacket/pkg/encoder"
+	"github.com/Amzza0x00/go-impacket/pkg/ms"
+	"github.com/Amzza0x00/go-impacket/pkg/smb/smb2"
+	"github.com/Amzza0x00/go-impacket/pkg/util"
 )
 
 // 此文件提供ms-rpce封装

@@ -3,8 +3,8 @@ package v5
 import (
 	"bytes"
 	"encoding/hex"
-	"go-impacket/pkg/encoder"
-	"go-impacket/pkg/ms"
+	"github.com/Amzza0x00/go-impacket/pkg/encoder"
+	"github.com/Amzza0x00/go-impacket/pkg/ms"
 )
 
 // 此文件提供IObjectExporter rpc接口
@@ -87,10 +87,6 @@ func NewServerAlive2Request() ServerAlive2RequestStruct {
 func NewServerAlive2Response() ServerAlive2ResponseStruct {
 	return ServerAlive2ResponseStruct{}
 }
-
-//type TcpClient struct {
-//	TCPClient
-//}
 
 func (c *TCPClient) ServerAlive2Request(callId uint32) (address []string, err error) {
 	err = c.MSRPCBind(ms.IID_IObjectExporter, ms.IID_IObjectExporter_VERSION)

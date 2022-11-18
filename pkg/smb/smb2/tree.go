@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"go-impacket/pkg/encoder"
-	"go-impacket/pkg/ms"
-	"go-impacket/pkg/smb"
+	"github.com/Amzza0x00/go-impacket/pkg/encoder"
+	"github.com/Amzza0x00/go-impacket/pkg/ms"
+	"github.com/Amzza0x00/go-impacket/pkg/smb"
 )
 
 // 此文件用于目录树连接/断开

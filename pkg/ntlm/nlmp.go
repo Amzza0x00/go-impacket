@@ -11,7 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"go-impacket/pkg/encoder"
+	"github.com/Amzza0x00/go-impacket/pkg/encoder"
 	"golang.org/x/crypto/md4"
 	"hash"
 	"strings"
@@ -119,13 +119,18 @@ func LMOWFv2(password, user, userDomain string) []byte {
 
 // 计算ntlmv2响应
 // Set temp to ConcatenationOf(Responserversion, HiResponserversion,
-//     Z(6), Time, ClientChallenge, Z(4), ServerName, Z(4))
+//
+//	Z(6), Time, ClientChallenge, Z(4), ServerName, Z(4))
+//
 // Set NTProofStr to HMAC_MD5(ResponseKeyNT,
-//     ConcatenationOf(CHALLENGE_MESSAGE.ServerChallenge,temp))
+//
+//	ConcatenationOf(CHALLENGE_MESSAGE.ServerChallenge,temp))
+//
 // Set NtChallengeResponse to ConcatenationOf(NTProofStr, temp)
 // Set LmChallengeResponse to ConcatenationOf(HMAC_MD5(ResponseKeyLM,
-//     ConcatenationOf(CHALLENGE_MESSAGE.ServerChallenge, ClientChallenge)),
-//     ClientChallenge )
+//
+//	ConcatenationOf(CHALLENGE_MESSAGE.ServerChallenge, ClientChallenge)),
+//	ClientChallenge )
 func ComputeNTLMv2Response(h hash.Hash, clientChallenge, serverChallenge, timestamp, serverName []byte) (NTChallengeResponse, LMChallengeResponse, SessionBaseKey []byte) {
 	temp := []byte{1, 1}
 	temp = append(temp, 0, 0, 0, 0, 0, 0)
@@ -238,7 +243,7 @@ type Challenge struct {
 }
 
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-nlmp/5e550938-91d4-459f-b67d-75d70009e3f3
-//ntlm v2认证结构
+// ntlm v2认证结构
 type NTLMv2Authentication struct {
 	Header
 	LmChallengeResponseLen                uint16 `smb:"len:LmChallengeResponse"`

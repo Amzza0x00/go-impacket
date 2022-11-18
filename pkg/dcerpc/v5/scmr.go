@@ -1,8 +1,8 @@
 package v5
 
 import (
-	"go-impacket/pkg/encoder"
-	"go-impacket/pkg/util"
+	"github.com/Amzza0x00/go-impacket/pkg/encoder"
+	"github.com/Amzza0x00/go-impacket/pkg/util"
 )
 
 // 此文件提供访问windows服务管理封装
@@ -108,17 +108,19 @@ const (
 )
 
 // OpenSCManagerW请求
-//DWORD ROpenSCManagerW(
+// DWORD ROpenSCManagerW(
+//
 //	[in, string, unique, range(0, SC_MAX_COMPUTER_NAME_LENGTH)] SVCCTL_HANDLEW lpMachineName,
 //	[in, string, unique, range(0, SC_MAX_NAME_LENGTH)] wchar_t* lpDatabaseName,
 //	[in] DWORD dwDesiredAccess,
 //	[out] LPSC_RPC_HANDLE lpScHandle
 //	);
-//lpMachineName：一种 SVCCTL_HANDLEW（第 2.2.3 节）数据类型，它定义指向以空字符结尾的 UNICODE 字符串的指针，该字符串指定服务器的机器名称。
-//lpDatabaseName：指向以空结尾的 UNICODE 字符串的指针，该字符串指定要打开的 SCM 数据库的名称。该参数必须设置为 NULL、“ServicesActive”或“ServicesFailed”。
-//dwDesiredAccess：一个值，指定对数据库的访问。这必须是第 3.1.4 节中指定的值之一。
-//客户端还必须具有 SC_MANAGER_CONNECT 访问权限。
-//lpScHandle：一种 LPSC_RPC_HANDLE 数据类型，用于定义新打开的 SCM 数据库的句柄。
+//
+// lpMachineName：一种 SVCCTL_HANDLEW（第 2.2.3 节）数据类型，它定义指向以空字符结尾的 UNICODE 字符串的指针，该字符串指定服务器的机器名称。
+// lpDatabaseName：指向以空结尾的 UNICODE 字符串的指针，该字符串指定要打开的 SCM 数据库的名称。该参数必须设置为 NULL、“ServicesActive”或“ServicesFailed”。
+// dwDesiredAccess：一个值，指定对数据库的访问。这必须是第 3.1.4 节中指定的值之一。
+// 客户端还必须具有 SC_MANAGER_CONNECT 访问权限。
+// lpScHandle：一种 LPSC_RPC_HANDLE 数据类型，用于定义新打开的 SCM 数据库的句柄。
 func NewOpenSCManagerWRequest() MSRPCRequestHeaderStruct {
 	header := NewMSRPCHeader()
 	//header.CallId = 2

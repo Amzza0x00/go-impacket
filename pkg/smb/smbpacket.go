@@ -1,7 +1,7 @@
 package smb
 
 import (
-	"go-impacket/pkg/gss"
+	"github.com/Amzza0x00/go-impacket/pkg/gss"
 )
 
 // 此文件定义SMB协议头
@@ -62,7 +62,7 @@ type SMB2PacketStruct struct {
 }
 
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/e14db7ff-763a-4263-8b10-0c3944f52fc5
-//SMB 修订号
+// SMB 修订号
 const (
 	SMB2_0_2_Dialect = 0x0202
 	SMB2_1_Dialect   = 0x0210

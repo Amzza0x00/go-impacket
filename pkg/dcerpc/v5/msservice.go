@@ -4,11 +4,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"go-impacket/pkg/dcerpc"
-	"go-impacket/pkg/encoder"
-	"go-impacket/pkg/ms"
-	"go-impacket/pkg/smb/smb2"
-	"go-impacket/pkg/util"
+	"github.com/Amzza0x00/go-impacket/pkg/dcerpc"
+	"github.com/Amzza0x00/go-impacket/pkg/encoder"
+	"github.com/Amzza0x00/go-impacket/pkg/ms"
+	"github.com/Amzza0x00/go-impacket/pkg/smb/smb2"
+	"github.com/Amzza0x00/go-impacket/pkg/util"
 	"strings"
 )
 

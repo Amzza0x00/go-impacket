@@ -8,7 +8,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"go-impacket/pkg/encoder"
+	"github.com/Amzza0x00/go-impacket/pkg/encoder"
 	"io"
 	"log"
 	"net"

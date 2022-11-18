@@ -2,8 +2,8 @@ package v5
 
 import (
 	"fmt"
-	"go-impacket/pkg/common"
-	"go-impacket/pkg/smb/smb2"
+	"github.com/Amzza0x00/go-impacket/pkg/common"
+	"github.com/Amzza0x00/go-impacket/pkg/smb/smb2"
 	"net"
 )
 
