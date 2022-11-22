@@ -1,4 +1,4 @@
-package v5
+package rpcrt
 
 import (
 	"github.com/Amzza0x00/go-impacket/pkg/encoder"

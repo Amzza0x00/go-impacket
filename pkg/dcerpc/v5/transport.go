@@ -3,17 +3,20 @@ package v5
 import (
 	"fmt"
 	"github.com/Amzza0x00/go-impacket/pkg/common"
-	"github.com/Amzza0x00/go-impacket/pkg/smb/smb2"
+	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/rpcrt"
+	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/tcprpct"
 	"net"
 )
 
-type SMBClient struct {
-	smb2.Client
-}
+//type SMBClient struct {
+//	smb2.Client
+//}
 
-type TCPClient struct {
-	common.Client
-}
+//type TCPClient struct {
+//	common.Client
+//}
+type SMBClient = rpcrt.SMBClient
+type TCPClient = tcprpct.TCPClient
 
 // 连接封装
 // ncacn_np协议的实现

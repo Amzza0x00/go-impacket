@@ -14,7 +14,6 @@ import (
 )
 
 // 此文件提供smb连接方法
-
 type Client struct {
 	common.Client
 }

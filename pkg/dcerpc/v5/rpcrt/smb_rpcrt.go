@@ -1,8 +1,9 @@
-package v5
+package rpcrt
 
 import (
 	"encoding/hex"
 	"errors"
+	//cmn "github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/common"
 	"github.com/Amzza0x00/go-impacket/pkg/encoder"
 	"github.com/Amzza0x00/go-impacket/pkg/ms"
 	"github.com/Amzza0x00/go-impacket/pkg/smb/smb2"
@@ -24,6 +25,10 @@ type MSRPCHeaderStruct struct {
 	AuthLength         uint16
 	CallId             uint32
 }
+
+//type MSRPCHeaderStruct struct {
+//	CommonHeaderStruct
+//}
 
 func NewMSRPCHeader() MSRPCHeaderStruct {
 	return MSRPCHeaderStruct{
@@ -145,6 +150,7 @@ func NewMSRPCBindAck() MSRPCBindAckStruct {
 }
 
 // smb->函数绑定
+//type Smbclient  client.SMBClient
 func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, uuid string, version uint32) (err error) {
 	header := NewMSRPCHeader()
 	header.FragLength = 72
@@ -199,43 +205,4 @@ func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, uuid string, version
 	}
 	c.Debug("Completed rpc bind : ["+ms.UUIDMap[uuid]+"]", nil)
 	return nil
-}
-
-// tcp->函数绑定
-func (c *TCPClient) MSRPCBind(uuid string, version uint32) (err error) {
-	header := NewMSRPCHeader()
-	header.FragLength = 72
-	header.CallId = 1
-	header.PacketType = PDUBind
-	header.PacketFlags = PDUFlagPending
-	bind := MSRPCBindStruct{
-		MSRPCHeaderStruct: header,
-		MaxXmitFrag:       4280,
-		MaxRecvFrag:       4280,
-		AssocGroup:        0,
-		NumCtxItems:       1,
-		CtxItem: CtxEItemStruct{
-			NumTransItems: 1,
-			AbstractSyntax: SyntaxIDStruct{
-				UUID:    util.PDUUuidFromBytes(uuid),
-				Version: version,
-			},
-			TransferSyntax: SyntaxIDStruct{
-				UUID:    util.PDUUuidFromBytes(NDRSyntax),
-				Version: 2,
-			},
-		},
-	}
-	c.Debug("Sending rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
-	buf, err := c.TCPSend(bind)
-	res := NewMSRPCBindAck()
-	c.Debug("Unmarshalling rpc bind", nil)
-	if err = encoder.Unmarshal(buf, &res); err != nil {
-		c.Debug("Raw:\n"+hex.Dump(buf), err)
-	}
-	if res.NumResults < 1 {
-		return errors.New("Failed to rpc bind code : [" + ms.UUIDMap[uuid] + "] ")
-	}
-	c.Debug("Completed rpc bind : ["+ms.UUIDMap[uuid]+"]", nil)
-	return err
 }

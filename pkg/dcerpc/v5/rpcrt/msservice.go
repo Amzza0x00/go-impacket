@@ -1,10 +1,11 @@
-package v5
+package rpcrt
 
 import (
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/Amzza0x00/go-impacket/pkg/dcerpc"
+	//"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/scmr"
 	"github.com/Amzza0x00/go-impacket/pkg/encoder"
 	"github.com/Amzza0x00/go-impacket/pkg/ms"
 	"github.com/Amzza0x00/go-impacket/pkg/smb/smb2"
