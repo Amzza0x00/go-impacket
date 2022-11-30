@@ -1,4 +1,4 @@
-package rpcrt
+package msrpc
 
 import (
 	"encoding/hex"
@@ -13,6 +13,9 @@ import (
 // 此文件提供ms-rpce封装
 // DCE/RPC RPC over SMB 协议实现
 // https://pubs.opengroup.org/onlinepubs/9629399/
+type MSRPCClient struct {
+	smb2.Client
+}
 
 // MSRPC 标准头
 type MSRPCHeaderStruct struct {
@@ -151,7 +154,7 @@ func NewMSRPCBindAck() MSRPCBindAckStruct {
 
 // smb->函数绑定
 //type Smbclient  client.SMBClient
-func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, uuid string, version uint32) (err error) {
+func (c *MSRPCClient) MSRPCBind(treeId uint32, fileId []byte, uuid string, version uint32) (err error) {
 	header := NewMSRPCHeader()
 	header.FragLength = 72
 	header.CallId = 1

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/dcom"
-	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/rpcrt"
+	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/msrpc"
 	"github.com/Amzza0x00/go-impacket/pkg/encoder"
 	"github.com/Amzza0x00/go-impacket/pkg/ms"
 	"github.com/Amzza0x00/go-impacket/pkg/util"
@@ -41,32 +41,32 @@ func (c *TCPClient) ServerAlive2Request(callId uint32) (address []string, err er
 
 // tcp->函数绑定
 func (c *TCPClient) MSRPCBind(uuid string, version uint32) (err error) {
-	header := rpcrt.NewMSRPCHeader()
+	header := msrpc.NewMSRPCHeader()
 	header.FragLength = 72
 	header.CallId = 1
-	header.PacketType = rpcrt.PDUBind
-	header.PacketFlags = rpcrt.PDUFlagPending
-	bind := rpcrt.MSRPCBindStruct{
+	header.PacketType = msrpc.PDUBind
+	header.PacketFlags = msrpc.PDUFlagPending
+	bind := msrpc.MSRPCBindStruct{
 		MSRPCHeaderStruct: header,
 		MaxXmitFrag:       4280,
 		MaxRecvFrag:       4280,
 		AssocGroup:        0,
 		NumCtxItems:       1,
-		CtxItem: rpcrt.CtxEItemStruct{
+		CtxItem: msrpc.CtxEItemStruct{
 			NumTransItems: 1,
-			AbstractSyntax: rpcrt.SyntaxIDStruct{
+			AbstractSyntax: msrpc.SyntaxIDStruct{
 				UUID:    util.PDUUuidFromBytes(uuid),
 				Version: version,
 			},
-			TransferSyntax: rpcrt.SyntaxIDStruct{
-				UUID:    util.PDUUuidFromBytes(rpcrt.NDRSyntax),
+			TransferSyntax: msrpc.SyntaxIDStruct{
+				UUID:    util.PDUUuidFromBytes(msrpc.NDRSyntax),
 				Version: 2,
 			},
 		},
 	}
 	c.Debug("Sending rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
 	buf, err := c.TCPSend(bind)
-	res := rpcrt.NewMSRPCBindAck()
+	res := msrpc.NewMSRPCBindAck()
 	c.Debug("Unmarshalling rpc bind", nil)
 	if err = encoder.Unmarshal(buf, &res); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)

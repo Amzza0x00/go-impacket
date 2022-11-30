@@ -3,7 +3,7 @@ package v5
 import (
 	"fmt"
 	"github.com/Amzza0x00/go-impacket/pkg/common"
-	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/rpcrt"
+	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/msservice"
 	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/tcprpct"
 	"net"
 )
@@ -15,7 +15,7 @@ import (
 //type TCPClient struct {
 //	common.Client
 //}
-type SMBClient = rpcrt.SMBClient
+type SMBClient = msservice.ServiceClient
 type TCPClient = tcprpct.TCPClient
 
 // 连接封装

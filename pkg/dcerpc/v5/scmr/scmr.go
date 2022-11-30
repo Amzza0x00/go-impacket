@@ -1,6 +1,8 @@
-package rpcrt
+package scmr
 
 import (
+	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/msrpc"
+	//"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/rpcrt"
 	"github.com/Amzza0x00/go-impacket/pkg/encoder"
 	"github.com/Amzza0x00/go-impacket/pkg/util"
 )
@@ -43,7 +45,7 @@ const (
 
 // OpenSCManagerW响应结构
 type OpenSCManagerWResponse struct {
-	MSRPCHeaderStruct
+	msrpc.MSRPCHeaderStruct
 	AllocHint     uint32
 	ContextId     uint16
 	CancelCount   uint8
@@ -121,11 +123,11 @@ const (
 // dwDesiredAccess：一个值，指定对数据库的访问。这必须是第 3.1.4 节中指定的值之一。
 // 客户端还必须具有 SC_MANAGER_CONNECT 访问权限。
 // lpScHandle：一种 LPSC_RPC_HANDLE 数据类型，用于定义新打开的 SCM 数据库的句柄。
-func NewOpenSCManagerWRequest() MSRPCRequestHeaderStruct {
-	header := NewMSRPCHeader()
+func NewOpenSCManagerWRequest() msrpc.MSRPCRequestHeaderStruct {
+	header := msrpc.NewMSRPCHeader()
 	//header.CallId = 2
-	header.PacketType = PDURequest
-	header.PacketFlags = PDUFault
+	header.PacketType = msrpc.PDURequest
+	header.PacketFlags = msrpc.PDUFault
 	// 服务请求
 	machinename := string(util.Random(6)) + "\x00"
 	databaseName := "ServicesActive\x00"
@@ -144,7 +146,7 @@ func NewOpenSCManagerWRequest() MSRPCRequestHeaderStruct {
 	}
 	fragLength := 24 + util.SizeOfStruct(buffer)
 	header.FragLength = uint16(fragLength)
-	return MSRPCRequestHeaderStruct{
+	return msrpc.MSRPCRequestHeaderStruct{
 		MSRPCHeaderStruct: header,
 		ContextId:         0,
 		OpNum:             ROpenSCManagerW,
@@ -167,7 +169,7 @@ type ROpenServiceWRequestStruct struct {
 }
 
 type ROpenServiceWResponseStruct struct {
-	MSRPCHeaderStruct
+	msrpc.MSRPCHeaderStruct
 	AllocHint     uint32
 	ContextId     uint16
 	CancelCount   uint8
@@ -177,11 +179,11 @@ type ROpenServiceWResponseStruct struct {
 }
 
 // 初始化打开服务请求
-func NewROpenServiceWRequest(contextHandle []byte, servicename string) MSRPCRequestHeaderStruct {
-	header := NewMSRPCHeader()
+func NewROpenServiceWRequest(contextHandle []byte, servicename string) msrpc.MSRPCRequestHeaderStruct {
+	header := msrpc.NewMSRPCHeader()
 	//header.CallId = 3
-	header.PacketType = PDURequest
-	header.PacketFlags = PDUFault
+	header.PacketType = msrpc.PDURequest
+	header.PacketFlags = msrpc.PDUFault
 	serName := servicename + "\x00"
 	buffer := ROpenServiceWRequestStruct{
 		ContextHandle: contextHandle,
@@ -194,7 +196,7 @@ func NewROpenServiceWRequest(contextHandle []byte, servicename string) MSRPCRequ
 	}
 	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
 	header.FragLength = uint16(fragLength)
-	return MSRPCRequestHeaderStruct{
+	return msrpc.MSRPCRequestHeaderStruct{
 		MSRPCHeaderStruct: header,
 		ContextId:         0,
 		OpNum:             ROpenServiceW,
@@ -254,7 +256,7 @@ type binaryPathName struct {
 
 // RCreateServiceW响应结构
 type RCreateServiceWResponseStruct struct {
-	MSRPCHeaderStruct
+	msrpc.MSRPCHeaderStruct
 	AllocHint     uint32
 	ContextId     uint16
 	CancelCount   uint8
@@ -291,11 +293,11 @@ const (
 	SERVICE_ERROR_CRITICAL = 0x00000003
 )
 
-func NewRCreateServiceWRequest(contextHandle []byte, servicename, uploadPathFile string) MSRPCRequestHeaderStruct {
-	header := NewMSRPCHeader()
+func NewRCreateServiceWRequest(contextHandle []byte, servicename, uploadPathFile string) msrpc.MSRPCRequestHeaderStruct {
+	header := msrpc.NewMSRPCHeader()
 	//header.CallId = 4
-	header.PacketType = PDURequest
-	header.PacketFlags = PDUFault
+	header.PacketType = msrpc.PDURequest
+	header.PacketFlags = msrpc.PDUFault
 	serName := servicename + "\x00"
 	uploadpathFile := uploadPathFile + "\x00"
 	buffer := RCreateServiceWRequestStruct{
@@ -322,7 +324,7 @@ func NewRCreateServiceWRequest(contextHandle []byte, servicename, uploadPathFile
 	}
 	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
 	header.FragLength = uint16(fragLength)
-	return MSRPCRequestHeaderStruct{
+	return msrpc.MSRPCRequestHeaderStruct{
 		MSRPCHeaderStruct: header,
 		ContextId:         0,
 		OpNum:             RCreateServiceW,
@@ -345,7 +347,7 @@ type RStartServiceWRequestStruct struct {
 }
 
 type RStartServiceWResponseStruct struct {
-	MSRPCHeaderStruct
+	msrpc.MSRPCHeaderStruct
 	AllocHint   uint32
 	ContextId   uint16
 	CancelCount uint8
@@ -354,11 +356,11 @@ type RStartServiceWResponseStruct struct {
 }
 
 // 启动服务封装
-func NewRStartServiceWRequest(contextHandle []byte) MSRPCRequestHeaderStruct {
-	header := NewMSRPCHeader()
+func NewRStartServiceWRequest(contextHandle []byte) msrpc.MSRPCRequestHeaderStruct {
+	header := msrpc.NewMSRPCHeader()
 	//header.CallId = 5
-	header.PacketType = PDURequest
-	header.PacketFlags = PDUFault
+	header.PacketType = msrpc.PDURequest
+	header.PacketFlags = msrpc.PDUFault
 	argv := encoder.ToUnicode(string(make([]byte, 4)))
 	buffer := RStartServiceWRequestStruct{
 		ContextHandle: contextHandle,
@@ -367,7 +369,7 @@ func NewRStartServiceWRequest(contextHandle []byte) MSRPCRequestHeaderStruct {
 	}
 	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
 	header.FragLength = uint16(fragLength)
-	return MSRPCRequestHeaderStruct{
+	return msrpc.MSRPCRequestHeaderStruct{
 		MSRPCHeaderStruct: header,
 		ContextId:         0,
 		OpNum:             RStartServiceW,
@@ -387,7 +389,7 @@ type RDeleteServiceRequestStruct struct {
 }
 
 type RDeleteServiceResponseStruct struct {
-	MSRPCHeaderStruct
+	msrpc.MSRPCHeaderStruct
 	AllocHint   uint32
 	ContextId   uint16
 	CancelCount uint8
@@ -396,17 +398,17 @@ type RDeleteServiceResponseStruct struct {
 }
 
 // 删除服务封装
-func NewRDeleteServiceRequest(contextHandle []byte) MSRPCRequestHeaderStruct {
-	header := NewMSRPCHeader()
+func NewRDeleteServiceRequest(contextHandle []byte) msrpc.MSRPCRequestHeaderStruct {
+	header := msrpc.NewMSRPCHeader()
 	//header.CallId = 5
-	header.PacketType = PDURequest
-	header.PacketFlags = PDUFault
+	header.PacketType = msrpc.PDURequest
+	header.PacketFlags = msrpc.PDUFault
 	buffer := RDeleteServiceRequestStruct{
 		ContextHandle: contextHandle,
 	}
 	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
 	header.FragLength = uint16(fragLength)
-	return MSRPCRequestHeaderStruct{
+	return msrpc.MSRPCRequestHeaderStruct{
 		MSRPCHeaderStruct: header,
 		ContextId:         0,
 		OpNum:             RDeleteService,
@@ -425,7 +427,7 @@ type RCloseServiceHandleRequestStruct struct {
 }
 
 type RCloseServiceHandleResponseStruct struct {
-	MSRPCHeaderStruct
+	msrpc.MSRPCHeaderStruct
 	AllocHint     uint32
 	ContextId     uint16
 	CancelCount   uint8
@@ -435,15 +437,15 @@ type RCloseServiceHandleResponseStruct struct {
 }
 
 // 初始化关闭服务句柄
-func NewRCloseServiceHandleRequest(contextHandle []byte) MSRPCRequestHeaderStruct {
-	header := NewMSRPCHeader()
+func NewRCloseServiceHandleRequest(contextHandle []byte) msrpc.MSRPCRequestHeaderStruct {
+	header := msrpc.NewMSRPCHeader()
 	//header.CallId = 6
-	header.PacketType = PDURequest
-	header.PacketFlags = PDUFault
+	header.PacketType = msrpc.PDURequest
+	header.PacketFlags = msrpc.PDUFault
 	buffer := RCloseServiceHandleRequestStruct{ContextHandle: contextHandle}
 	fragLength := 24 + util.SizeOfStruct(buffer) // 头固定大小24
 	header.FragLength = uint16(fragLength)
-	return MSRPCRequestHeaderStruct{
+	return msrpc.MSRPCRequestHeaderStruct{
 		MSRPCHeaderStruct: header,
 		ContextId:         0,
 		OpNum:             RCloseServiceHandle,

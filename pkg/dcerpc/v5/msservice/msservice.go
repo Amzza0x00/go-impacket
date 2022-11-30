@@ -1,10 +1,13 @@
-package rpcrt
+package msservice
 
 import (
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/Amzza0x00/go-impacket/pkg/dcerpc"
+	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/msrpc"
+	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/scmr"
+
 	//"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/scmr"
 	"github.com/Amzza0x00/go-impacket/pkg/encoder"
 	"github.com/Amzza0x00/go-impacket/pkg/ms"
@@ -13,10 +16,14 @@ import (
 	"strings"
 )
 
+//type ServiceClient msrpc.MSRPCClient
 // 此文件提供访问windows服务管理安装/删除
+type ServiceClient struct {
+	msrpc.MSRPCClient
+}
 
 // smb->上传文件，返回文件名
-func (c *SMBClient) FileUpload(file, Path string) (filename string, err error) {
+func (c *ServiceClient) FileUpload(file, Path string) (filename string, err error) {
 	treeId, err := c.TreeConnect("C$")
 	if err != nil {
 		c.Debug("", err)
@@ -56,7 +63,7 @@ func (c *SMBClient) FileUpload(file, Path string) (filename string, err error) {
 }
 
 // smb->打开scm，返回scm服务句柄
-func (c *SMBClient) OpenSvcManager(treeId, callId uint32) (fileid, handler []byte, err error) {
+func (c *ServiceClient) OpenSvcManager(treeId, callId uint32) (fileid, handler []byte, err error) {
 	createRequestStruct := smb2.CreateRequestStruct{
 		OpLock:             smb2.SMB2_OPLOCK_LEVEL_NONE,
 		ImpersonationLevel: smb2.Impersonation,
@@ -77,7 +84,7 @@ func (c *SMBClient) OpenSvcManager(treeId, callId uint32) (fileid, handler []byt
 		c.Debug("", err)
 		return nil, nil, err
 	}
-	openSvcManagerRequest := NewOpenSCManagerWRequest()
+	openSvcManagerRequest := scmr.NewOpenSCManagerWRequest()
 	openSvcManagerRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, openSvcManagerRequest)
 	_, err = c.SMBSend(req)
@@ -93,7 +100,7 @@ func (c *SMBClient) OpenSvcManager(treeId, callId uint32) (fileid, handler []byt
 		return nil, nil, err
 	}
 	smbRes := smb2.NewReadResponse()
-	res := NewOpenSCManagerWResponse()
+	res := scmr.NewOpenSCManagerWResponse()
 	c.Debug("Unmarshalling OpenSCManagerW response", nil)
 	if err = encoder.Unmarshal(buf, &smbRes); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
@@ -118,10 +125,10 @@ func (c *SMBClient) OpenSvcManager(treeId, callId uint32) (fileid, handler []byt
 }
 
 // smb->打开服务
-func (c *SMBClient) OpenService(treeId uint32, fileId, contextHandle []byte, servicename string, callId uint32) (err error) {
+func (c *ServiceClient) OpenService(treeId uint32, fileId, contextHandle []byte, servicename string, callId uint32) (err error) {
 	// 打开服务
 	c.Debug("Sending svcctl OpenServiceW request", nil)
-	rOpenServiceRequest := NewROpenServiceWRequest(contextHandle, servicename)
+	rOpenServiceRequest := scmr.NewROpenServiceWRequest(contextHandle, servicename)
 	rOpenServiceRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rOpenServiceRequest)
 	buf, err := c.SMBSend(req)
@@ -137,7 +144,7 @@ func (c *SMBClient) OpenService(treeId uint32, fileId, contextHandle []byte, ser
 		return err
 	}
 	smbRes := smb2.NewReadResponse()
-	res := NewROpenServiceWResponse()
+	res := scmr.NewROpenServiceWResponse()
 	c.Debug("Unmarshalling ROpenServiceW response", nil)
 	if err = encoder.Unmarshal(buf, &smbRes); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
@@ -160,10 +167,10 @@ func (c *SMBClient) OpenService(treeId uint32, fileId, contextHandle []byte, ser
 }
 
 // smb->创建服务，返回创建服务后的实例句柄
-func (c *SMBClient) CreateService(treeId uint32, fileId, contextHandle []byte, servicename, uploadPathFile string, callId uint32) (handler []byte, err error) {
+func (c *ServiceClient) CreateService(treeId uint32, fileId, contextHandle []byte, servicename, uploadPathFile string, callId uint32) (handler []byte, err error) {
 	// 创建服务
 	c.Debug("Sending svcctl RCreateServiceW request", nil)
-	rCreateServiceWRequest := NewRCreateServiceWRequest(contextHandle, servicename, uploadPathFile)
+	rCreateServiceWRequest := scmr.NewRCreateServiceWRequest(contextHandle, servicename, uploadPathFile)
 	rCreateServiceWRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rCreateServiceWRequest)
 	buf, err := c.SMBSend(req)
@@ -179,7 +186,7 @@ func (c *SMBClient) CreateService(treeId uint32, fileId, contextHandle []byte, s
 		return nil, err
 	}
 	smbRes := smb2.NewReadResponse()
-	res := NewRCreateServiceWResponse()
+	res := scmr.NewRCreateServiceWResponse()
 	c.Debug("Unmarshalling RCreateServiceW response", nil)
 	if err = encoder.Unmarshal(buf, &smbRes); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
@@ -204,10 +211,10 @@ func (c *SMBClient) CreateService(treeId uint32, fileId, contextHandle []byte, s
 }
 
 // smb->启动服务
-func (c *SMBClient) StartService(treeId uint32, fileId, serviceHandle []byte, callId uint32) (err error) {
+func (c *ServiceClient) StartService(treeId uint32, fileId, serviceHandle []byte, callId uint32) (err error) {
 	// 启动服务
 	c.Debug("Sending svcctl RStartServiceW request", nil)
-	rStartServiceWRequest := NewRStartServiceWRequest(serviceHandle)
+	rStartServiceWRequest := scmr.NewRStartServiceWRequest(serviceHandle)
 	rStartServiceWRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rStartServiceWRequest)
 	buf, err := c.SMBSend(req)
@@ -223,7 +230,7 @@ func (c *SMBClient) StartService(treeId uint32, fileId, serviceHandle []byte, ca
 		return err
 	}
 	smbRes := smb2.NewReadResponse()
-	res := NewRStartServiceWResponse()
+	res := scmr.NewRStartServiceWResponse()
 	c.Debug("Unmarshalling RStartServiceW response", nil)
 	if err = encoder.Unmarshal(buf, &smbRes); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
@@ -246,9 +253,9 @@ func (c *SMBClient) StartService(treeId uint32, fileId, serviceHandle []byte, ca
 }
 
 // smb->删除服务
-func (c *SMBClient) DeleteService(treeId uint32, fileId, serviceHandle []byte, callId uint32) (err error) {
+func (c *ServiceClient) DeleteService(treeId uint32, fileId, serviceHandle []byte, callId uint32) (err error) {
 	c.Debug("Sending svcctl RDeleteService request", nil)
-	rDeleteServiceRequest := NewRDeleteServiceRequest(serviceHandle)
+	rDeleteServiceRequest := scmr.NewRDeleteServiceRequest(serviceHandle)
 	rDeleteServiceRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rDeleteServiceRequest)
 	buf, err := c.SMBSend(req)
@@ -264,7 +271,7 @@ func (c *SMBClient) DeleteService(treeId uint32, fileId, serviceHandle []byte, c
 		return err
 	}
 	smbRes := smb2.NewReadResponse()
-	res := NewRDeleteServiceResponse()
+	res := scmr.NewRDeleteServiceResponse()
 	c.Debug("Unmarshalling RDeleteService response", nil)
 	if err = encoder.Unmarshal(buf, &smbRes); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
@@ -287,10 +294,10 @@ func (c *SMBClient) DeleteService(treeId uint32, fileId, serviceHandle []byte, c
 }
 
 // smb->关闭scm句柄
-func (c *SMBClient) CloseService(treeId uint32, fileId, serviceHandle []byte, callId uint32) error {
+func (c *ServiceClient) CloseService(treeId uint32, fileId, serviceHandle []byte, callId uint32) error {
 	// 关闭服务管理句柄
 	c.Debug("Sending svcctl RCloseServiceHandle request", nil)
-	rCloseServiceHandleRequest := NewRCloseServiceHandleRequest(serviceHandle)
+	rCloseServiceHandleRequest := scmr.NewRCloseServiceHandleRequest(serviceHandle)
 	rCloseServiceHandleRequest.CallId = callId
 	req := c.NewWriteRequest(treeId, fileId, rCloseServiceHandleRequest)
 	buf, err := c.SMBSend(req)
@@ -306,7 +313,7 @@ func (c *SMBClient) CloseService(treeId uint32, fileId, serviceHandle []byte, ca
 		return err
 	}
 	smbRes := smb2.NewReadResponse()
-	res := NewRCloseServiceHandleResponse()
+	res := scmr.NewRCloseServiceHandleResponse()
 	c.Debug("Unmarshalling RCloseServiceHandle response", nil)
 	if err = encoder.Unmarshal(buf, &smbRes); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
@@ -329,7 +336,7 @@ func (c *SMBClient) CloseService(treeId uint32, fileId, serviceHandle []byte, ca
 }
 
 // 服务安装
-func (c *SMBClient) ServiceInstall(servicename, file, path string) (service string, servicehandle []byte, err error) {
+func (c *ServiceClient) ServiceInstall(servicename, file, path string) (service string, servicehandle []byte, err error) {
 	// 上传文件
 	filename, err := c.FileUpload(file, path)
 	if err != nil {
@@ -383,7 +390,7 @@ func (c *SMBClient) ServiceInstall(servicename, file, path string) (service stri
 }
 
 // 服务删除
-func (c *SMBClient) ServiceDelete(serviceHandle []byte) (err error) {
+func (c *ServiceClient) ServiceDelete(serviceHandle []byte) (err error) {
 	//建立ipc$管道
 	treeId, err := c.TreeConnect("IPC$")
 	if err != nil {

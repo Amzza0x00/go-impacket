@@ -2,7 +2,7 @@ package dcom
 
 import (
 	//"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5"
-	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/rpcrt"
+	"github.com/Amzza0x00/go-impacket/pkg/dcerpc/v5/msrpc"
 )
 
 // 此文件提供IObjectExporter rpc接口
@@ -22,14 +22,14 @@ const (
 
 // ServerAlive2请求结构
 type ServerAlive2RequestStruct struct {
-	rpcrt.MSRPCHeaderStruct
+	msrpc.MSRPCHeaderStruct
 	AllocHint uint32
 	ContextId uint16
 	Opnum     uint16
 }
 
 type ServerAlive2ResponseStruct struct {
-	rpcrt.MSRPCHeaderStruct
+	msrpc.MSRPCHeaderStruct
 	AllocHint       uint32
 	ContextId       uint16
 	CancelCount     uint8
@@ -70,9 +70,9 @@ type AddressStruct struct {
 //}
 
 func NewServerAlive2Request() ServerAlive2RequestStruct {
-	header := rpcrt.NewMSRPCHeader()
-	header.PacketType = rpcrt.PDURequest
-	header.PacketFlags = rpcrt.PDUFault
+	header := msrpc.NewMSRPCHeader()
+	header.PacketType = msrpc.PDURequest
+	header.PacketFlags = msrpc.PDUFault
 	header.FragLength = 24
 	return ServerAlive2RequestStruct{
 		MSRPCHeaderStruct: header,
@@ -80,6 +80,7 @@ func NewServerAlive2Request() ServerAlive2RequestStruct {
 		ContextId:         0,
 		Opnum:             ServerAlive2,
 	}
+
 }
 
 func NewServerAlive2Response() ServerAlive2ResponseStruct {
