@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/Amzza0x00/go-impacket/pkg/common"
 	"github.com/Amzza0x00/go-impacket/pkg/encoder"
-	"github.com/Amzza0x00/go-impacket/pkg/gss"
+	"github.com/Amzza0x00/go-impacket/pkg/krb5/gss"
+	ntlm2 "github.com/Amzza0x00/go-impacket/pkg/krb5/ntlm"
 	"github.com/Amzza0x00/go-impacket/pkg/ms"
-	"github.com/Amzza0x00/go-impacket/pkg/ntlm"
 	"github.com/Amzza0x00/go-impacket/pkg/smb"
 	"net"
 )
@@ -90,7 +90,7 @@ func (c *Client) NewSessionSetupRequest() (smb.SMB2SessionSetupRequestStruct, er
 	smb2Header.MessageId = c.GetMessageId()
 	smb2Header.SessionId = c.GetSessionId()
 
-	ntlmsspneg := ntlm.NewNegotiate(c.GetOptions().Domain, c.GetOptions().Workstation)
+	ntlmsspneg := ntlm2.NewNegotiate(c.GetOptions().Domain, c.GetOptions().Workstation)
 	data, err := encoder.Marshal(ntlmsspneg)
 	if err != nil {
 		return smb.SMB2SessionSetupRequestStruct{}, err
@@ -143,7 +143,7 @@ func (c *Client) NewSessionSetup2Request() (smb.SMB2SessionSetup2RequestStruct, 
 	smb2Header.MessageId = c.GetMessageId()
 	smb2Header.SessionId = c.GetSessionId()
 
-	ntlmsspneg := ntlm.NewNegotiate(c.GetOptions().Domain, c.GetOptions().Workstation)
+	ntlmsspneg := ntlm2.NewNegotiate(c.GetOptions().Domain, c.GetOptions().Workstation)
 	data, err := encoder.Marshal(ntlmsspneg)
 	if err != nil {
 		return smb.SMB2SessionSetup2RequestStruct{}, err
@@ -202,7 +202,7 @@ func (c *Client) NegotiateProtocol() (err error) {
 	//fmt.Println(oid)
 	// 检查是否存在ntlmssp
 	hasNTLMSSP := false
-	ntlmsspOID, err := gss.ObjectIDStrToInt(ntlm.NTLMSSPMECHTYPEOID)
+	ntlmsspOID, err := gss.ObjectIDStrToInt(ntlm2.NTLMSSPMECHTYPEOID)
 	if err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func (c *Client) NegotiateProtocol() (err error) {
 		return err
 	}
 
-	challenge := ntlm.NewChallenge()
+	challenge := ntlm2.NewChallenge()
 	resp := ssres.SecurityBlob
 	if err = encoder.Unmarshal(resp.ResponseToken, &challenge); err != nil {
 		c.Debug("", err)
@@ -281,15 +281,15 @@ func (c *Client) NegotiateProtocol() (err error) {
 		return err
 	}
 
-	var auth ntlm.NTLMv2Authentication
+	var auth ntlm2.NTLMv2Authentication
 	if c.GetOptions().Hash != "" {
 		// Hash present, use it for auth
 		c.Debug("Performing hash-based authentication", nil)
-		auth = ntlm.NewAuthenticateHash(c.GetOptions().Domain, c.GetOptions().User, c.GetOptions().Workstation, c.GetOptions().Hash, challenge)
+		auth = ntlm2.NewAuthenticateHash(c.GetOptions().Domain, c.GetOptions().User, c.GetOptions().Workstation, c.GetOptions().Hash, challenge)
 	} else {
 		// No hash, use password
 		c.Debug("Performing password-based authentication", nil)
-		auth = ntlm.NewAuthenticatePass(c.GetOptions().Domain, c.GetOptions().User, c.GetOptions().Workstation, c.GetOptions().Password, challenge)
+		auth = ntlm2.NewAuthenticatePass(c.GetOptions().Domain, c.GetOptions().User, c.GetOptions().Workstation, c.GetOptions().Password, challenge)
 	}
 
 	responseToken, err := encoder.Marshal(auth)

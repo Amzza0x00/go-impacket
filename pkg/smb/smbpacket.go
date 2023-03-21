@@ -1,7 +1,7 @@
 package smb
 
 import (
-	"github.com/Amzza0x00/go-impacket/pkg/gss"
+	"github.com/Amzza0x00/go-impacket/pkg/krb5/gss"
 )
 
 // 此文件定义SMB协议头

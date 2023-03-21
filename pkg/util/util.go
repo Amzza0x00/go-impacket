@@ -157,7 +157,7 @@ func DealHyphen(s string) ([]string, error) {
 		}
 		return ips, nil
 	} else {
-		return nil, errors.New("wrong Hyphen")
+		return nil, errors.New("Wrong string")
 	}
 
 }
