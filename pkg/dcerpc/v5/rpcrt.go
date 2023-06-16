@@ -53,7 +53,7 @@ type MSRPCBindStruct struct {
 	NumCtxItems uint8
 	Reserved    uint8
 	Reserved2   uint16
-	CtxItem     CtxEItemStruct
+	CtxItems    []CtxItemStruct //多个对象
 }
 
 // 函数绑定响应结构
@@ -69,7 +69,7 @@ type MSRPCBindAckStruct struct {
 }
 
 // PDU CtxItem结构
-type CtxEItemStruct struct {
+type CtxItemStruct struct {
 	ContextId      uint16
 	NumTransItems  uint8
 	Reserved       uint8
@@ -128,13 +128,6 @@ const (
 	PDUFlagReserved_80 = 0x80
 )
 
-// NDR 传输标准
-// https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-rpce/b6090c2b-f44a-47a1-a13b-b82ade0137b2
-const (
-	NDRSyntax   = "8a885d04-1ceb-11c9-9fe8-08002b104860" //Version 02, NDR64 data representation protocol
-	NDR64Syntax = "71710533-BEBA-4937-8319-B5DBEF9CCC36" //Version 01, NDR64 data representation protocol
-)
-
 // 函数绑定响应
 func NewMSRPCBindAck() MSRPCBindAckStruct {
 	return MSRPCBindAckStruct{
@@ -145,32 +138,24 @@ func NewMSRPCBindAck() MSRPCBindAckStruct {
 }
 
 // smb->函数绑定
-func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, uuid string, version uint32) (err error) {
+func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, callId uint32, ctxs []CtxItemStruct) (err error) {
 	header := NewMSRPCHeader()
-	header.FragLength = 72
-	header.CallId = 1
+	header.CallId = callId
 	header.PacketType = PDUBind
 	header.PacketFlags = PDUFlagPending
-	bind := MSRPCBindStruct{
+	bindStruct := MSRPCBindStruct{
 		MSRPCHeaderStruct: header,
 		MaxXmitFrag:       4280,
 		MaxRecvFrag:       4280,
 		AssocGroup:        0,
-		NumCtxItems:       1,
-		CtxItem: CtxEItemStruct{
-			NumTransItems: 1,
-			AbstractSyntax: SyntaxIDStruct{
-				UUID:    util.PDUUuidFromBytes(uuid),
-				Version: version,
-			},
-			TransferSyntax: SyntaxIDStruct{
-				UUID:    util.PDUUuidFromBytes(NDRSyntax),
-				Version: 2,
-			},
-		},
+		CtxItems:          ctxs,
 	}
-	req := c.NewWriteRequest(treeId, fileId, bind)
-	c.Debug("Sending rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
+	bindStruct.NumCtxItems = uint8(len(ctxs))
+	// 重新修改FragLength
+	fragLength := util.SizeOfStruct(bindStruct)
+	bindStruct.FragLength = uint16(fragLength)
+	req := c.NewWriteRequest(treeId, fileId, bindStruct)
+	c.Debug("Sending rpc bind", nil)
 	_, err = c.SMBSend(req)
 	if err != nil {
 		c.Debug("", err)
@@ -195,47 +180,39 @@ func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, uuid string, version
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
 	if res.NumResults < 1 {
-		return errors.New("Failed to rpc bind code : [" + ms.UUIDMap[uuid] + "] " + ms.StatusMap[smbRes.Status])
+		return errors.New("Failed to rpc bind code : " + ms.StatusMap[smbRes.Status])
 	}
-	c.Debug("Completed rpc bind : ["+ms.UUIDMap[uuid]+"]", nil)
+	c.Debug("Completed rpc bind", nil)
 	return nil
 }
 
 // tcp->函数绑定
-func (c *TCPClient) MSRPCBind(uuid string, version uint32) (err error) {
+func (c *TCPClient) MSRPCBind(callId uint32, ctxs []CtxItemStruct) (err error) {
 	header := NewMSRPCHeader()
-	header.FragLength = 72
-	header.CallId = 1
+	header.CallId = callId
 	header.PacketType = PDUBind
 	header.PacketFlags = PDUFlagPending
-	bind := MSRPCBindStruct{
+	bindStruct := MSRPCBindStruct{
 		MSRPCHeaderStruct: header,
 		MaxXmitFrag:       4280,
 		MaxRecvFrag:       4280,
 		AssocGroup:        0,
-		NumCtxItems:       1,
-		CtxItem: CtxEItemStruct{
-			NumTransItems: 1,
-			AbstractSyntax: SyntaxIDStruct{
-				UUID:    util.PDUUuidFromBytes(uuid),
-				Version: version,
-			},
-			TransferSyntax: SyntaxIDStruct{
-				UUID:    util.PDUUuidFromBytes(NDRSyntax),
-				Version: 2,
-			},
-		},
+		CtxItems:          ctxs,
 	}
-	c.Debug("Sending rpc bind to ["+ms.UUIDMap[uuid]+"]", nil)
-	buf, err := c.TCPSend(bind)
+	bindStruct.NumCtxItems = uint8(len(ctxs))
+	// 重新修改FragLength
+	fragLength := util.SizeOfStruct(bindStruct)
+	bindStruct.FragLength = uint16(fragLength)
+	c.Debug("Sending rpc bind", nil)
+	buf, err := c.TCPSend(bindStruct)
 	res := NewMSRPCBindAck()
 	c.Debug("Unmarshalling rpc bind", nil)
 	if err = encoder.Unmarshal(buf, &res); err != nil {
 		c.Debug("Raw:\n"+hex.Dump(buf), err)
 	}
 	if res.NumResults < 1 {
-		return errors.New("Failed to rpc bind code : [" + ms.UUIDMap[uuid] + "] ")
+		return errors.New("Failed to rpc bind")
 	}
-	c.Debug("Completed rpc bind : ["+ms.UUIDMap[uuid]+"]", nil)
+	c.Debug("Completed rpc bind", nil)
 	return err
 }

@@ -71,7 +71,17 @@ func (c *SMBClient) OpenSvcManager(treeId, callId uint32) (fileid, handler []byt
 		return nil, nil, err
 	}
 	// 绑定svcctl函数
-	err = c.MSRPCBind(treeId, fileId, ms.NTSVCS_UUID, ms.NTSVCS_VERSION)
+	ctxs := []CtxItemStruct{{
+		NumTransItems: 1,
+		AbstractSyntax: SyntaxIDStruct{
+			UUID:    util.PDUUuidFromBytes(ms.NTSVCS_UUID),
+			Version: ms.NTSVCS_VERSION,
+		},
+		TransferSyntax: SyntaxIDStruct{
+			UUID:    util.PDUUuidFromBytes(ms.NDR_UUID),
+			Version: ms.NDR_VERSION,
+		}}}
+	err = c.MSRPCBind(treeId, fileId, callId, ctxs)
 	if err != nil {
 		c.Debug("", err)
 		return nil, nil, err

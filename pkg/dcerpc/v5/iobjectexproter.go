@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"github.com/Amzza0x00/go-impacket/pkg/encoder"
 	"github.com/Amzza0x00/go-impacket/pkg/ms"
+	"github.com/Amzza0x00/go-impacket/pkg/util"
 )
 
 // 此文件提供IObjectExporter rpc接口
@@ -88,12 +89,27 @@ func NewServerAlive2Response() ServerAlive2ResponseStruct {
 	return ServerAlive2ResponseStruct{}
 }
 
-func (c *TCPClient) ServerAlive2Request(callId uint32) (address []string, err error) {
-	err = c.MSRPCBind(ms.IID_IObjectExporter, ms.IID_IObjectExporter_VERSION)
+// 绑定IOXIDResolver接口
+func (c *TCPClient) RpcBindIOXIDResolver(callId uint32) (err error) {
+	ctxs := []CtxItemStruct{{
+		NumTransItems: 1,
+		AbstractSyntax: SyntaxIDStruct{
+			UUID:    util.PDUUuidFromBytes(ms.IID_IObjectExporter),
+			Version: ms.IID_IObjectExporter_VERSION,
+		},
+		TransferSyntax: SyntaxIDStruct{
+			UUID:    util.PDUUuidFromBytes(ms.NDR_UUID),
+			Version: ms.NDR_VERSION,
+		}}}
+	err = c.MSRPCBind(callId, ctxs)
 	if err != nil {
 		c.Debug("", err)
-		return nil, err
+		return err
 	}
+	return nil
+}
+
+func (c *TCPClient) ServerAlive2Request(callId uint32) (address []string, err error) {
 	c.Debug("Sending ServerAlive2 request", nil)
 	req := NewServerAlive2Request()
 	req.CallId = callId
@@ -114,4 +130,32 @@ func (c *TCPClient) ServerAlive2Request(callId uint32) (address []string, err er
 		}
 	}
 	return address, nil
+}
+
+// ResolveOxid2请求结构
+// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dcom/65292e10-ef0c-43ee-bce7-788e271cc794
+type ResolveOxid2RequestStruct struct {
+	// 一共32字节
+	OXID           uint64
+	IpIdRemUnknown uint64
+	DwPid          uint32
+	DwTid          uint32
+	Reserved       uint64
+}
+
+// ResolveOxid2响应结构
+type ResolveOxid2ResponseStruct struct {
+	Reserved uint64
+	oxidBindingsStruct
+	Reserved2    uint16
+	IPID         []byte `smb:"fixed:16"`
+	AuthnHint    uint32
+	VersionMajor uint16
+	VersionMinor uint16
+	HResult      uint32
+}
+
+type oxidBindingsStruct struct {
+	NumEntries     uint16
+	SecurityOffset uint16
 }

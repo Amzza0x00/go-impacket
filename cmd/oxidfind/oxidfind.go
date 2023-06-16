@@ -53,7 +53,12 @@ func main() {
 			}
 			rpc, _ := DCERPCv5.TCPTransport()
 			rpc.Client = session.Client
-			address, err := rpc.ServerAlive2Request(1)
+			err = rpc.RpcBindIOXIDResolver(1)
+			if err != nil {
+				fmt.Println("[-]", err)
+				return
+			}
+			address, err := rpc.ServerAlive2Request(2)
 			if err != nil {
 				fmt.Println("[-]", err)
 				return

@@ -208,22 +208,10 @@ func getFieldLengthByName(fieldName string, meta *Metadata) (uint64, error) {
 
 // 获取tag的返回长度
 func getFieldCountByName(fieldName string, meta *Metadata) (uint64, error) {
-	//var fieldName string
-	//var l int
 	var ret uint64
 	if meta == nil || meta.Tags == nil || meta.Parent == nil || meta.Lens == nil {
 		return 0, errors.New("Cannot determine field length. Missing required metadata")
 	}
-
-	// 判断是否存在-
-	//if strings.Contains(fieldname, "-") {
-	//	slice := strings.Split(fieldname, "-")
-	//	fieldName = slice[0]
-	//	l, _ = strconv.Atoi(slice[1])
-	//} else {
-	//	fieldName = fieldname
-	//	l = 0
-	//}
 
 	// Check if length is stored in field length cache
 	if val, ok := meta.Lens[fieldName]; ok {
@@ -300,13 +288,28 @@ func marshal(v interface{}, meta *Metadata) ([]byte, error) {
 				return nil, err
 			}
 			m.Tags = tags
-			buf, err := marshal(valuev.Field(j).Interface(), m)
-			if err != nil {
-				return nil, err
-			}
-			m.Lens[typev.Field(j).Name] = uint64(len(buf))
-			if err := binary.Write(w, binary.LittleEndian, buf); err != nil {
-				return nil, err
+			fieldValue := valuev.Field(j)
+			// 处理结构体中的切片类型，用来应对多变情况
+			if fieldValue.Kind() == reflect.Slice {
+				for k := 0; k < fieldValue.Len(); k++ {
+					buf, err := marshal(fieldValue.Index(k).Interface(), m)
+					if err != nil {
+						return nil, err
+					}
+					m.Lens[typev.Field(j).Name] = uint64(len(buf))
+					if err := binary.Write(w, binary.LittleEndian, buf); err != nil {
+						return nil, err
+					}
+				}
+			} else {
+				buf, err := marshal(fieldValue.Interface(), m)
+				if err != nil {
+					return nil, err
+				}
+				m.Lens[typev.Field(j).Name] = uint64(len(buf))
+				if err := binary.Write(w, binary.LittleEndian, buf); err != nil {
+					return nil, err
+				}
 			}
 		}
 	case reflect.Slice, reflect.Array:
