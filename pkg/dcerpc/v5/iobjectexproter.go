@@ -101,7 +101,7 @@ func (c *TCPClient) RpcBindIOXIDResolver(callId uint32) (err error) {
 			UUID:    util.PDUUuidFromBytes(ms.NDR_UUID),
 			Version: ms.NDR_VERSION,
 		}}}
-	err = c.MSRPCBind(callId, ctxs)
+	_, err = c.MSRPCBind(callId, ctxs)
 	if err != nil {
 		c.Debug("", err)
 		return err

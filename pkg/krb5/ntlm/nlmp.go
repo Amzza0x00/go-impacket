@@ -32,38 +32,40 @@ const (
 	NTLMAuthenticate = 0x00000003
 )
 
+// ntlm flag标识位
+// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-nlmp/99d90ff4-957f-4c8a-80e4-5bfe5a9a9832
 const (
-	FlgNegUnicode uint32 = 1 << iota
+	FlgNegUNICODE uint32 = 1 << iota
 	FlgNegOEM
-	FlgNegRequestTarget
-	FlgNegReserved10
+	FlgRequestTarget
+	FlgRequest0x00000008
 	FlgNegSign
 	FlgNegSeal
-	FlgNegDatagram
-	FlgNegLmKey
-	FlgNegReserved9
-	FlgNegNTLM
-	FlgNegReserved8
+	FLgNegDatagram
+	FlgNegLanManagerKey
+	FlgNeg0x000001
+	FlgNegNTLMKey
+	FlgNegNtOnly
 	FlgNegAnonymous
 	FlgNegOEMDomainSupplied
 	FlgNegOEMWorkstationSupplied
-	FlgNegReserved7
+	FlgNeg0x00004
 	FlgNegAlwaysSign
-	FlgNegTargetTypeDomain
-	FlgNegTargetTypeServer
-	FlgNegReserved6
-	FlgNegExtendedSessionSecurity
+	FlgTypeDomain
+	FlgTypeServer
+	FlgTypeShare
+	FlgNegExtendedSecurity
 	FlgNegIdentify
-	FlgNegReserved5
-	FlgNegRequestNonNtSessionKey
+	FlgNeg0x002
+	FlgNonNTSession
 	FlgNegTargetInfo
-	FlgNegReserved4
+	FlgNeg0x01
 	FlgNegVersion
-	FlgNegReserved3
-	FlgNegReserved2
-	FlgNegReserved1
+	FlgNeg0x04
+	FlgNeg0x08
+	FlgNeg0x1
 	FlgNeg128
-	FlgNegKeyExch
+	FlgNegKeyExchange
 	FlgNeg56
 )
 

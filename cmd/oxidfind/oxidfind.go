@@ -32,8 +32,8 @@ func init() {
 func main() {
 	ips, err := util.IpParse(ip)
 	if err != nil {
-		fmt.Printf("[-] ip parse error [%s]: %s\n", ip, err)
-		os.Exit(0)
+		log.Println(err)
+		os.Exit(1)
 	}
 	var wg sync.WaitGroup
 	c := make(chan struct{}, thread)
@@ -48,19 +48,21 @@ func main() {
 			defer wg.Done()
 			session, err := DCERPCv5.NewTCPSession(options, debug)
 			if err != nil {
-				fmt.Printf("[-] Connect failed [%s]: %s\n", ip, err)
+				if debug {
+					log.Printf("[-] Connect failed [%s]: %s\n", ip, err)
+				}
 				return
 			}
 			rpc, _ := DCERPCv5.TCPTransport()
 			rpc.Client = session.Client
 			err = rpc.RpcBindIOXIDResolver(1)
 			if err != nil {
-				fmt.Println("[-]", err)
+				rpc.Debug("[-]", err)
 				return
 			}
 			address, err := rpc.ServerAlive2Request(2)
 			if err != nil {
-				fmt.Println("[-]", err)
+				rpc.Debug("[-]", err)
 				return
 			}
 			fmt.Printf("[*] %s is alive\n", ip)

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/Amzza0x00/go-impacket/pkg/util"
 	"reflect"
 	"strconv"
 	"strings"
@@ -40,27 +41,27 @@ type TagMap struct {
 	has map[string]bool
 }
 
-func (t TagMap) Has(key string) bool {
+func (t *TagMap) Has(key string) bool {
 	return t.has[key]
 }
 
-func (t TagMap) Set(key string, val interface{}) {
+func (t *TagMap) Set(key string, val interface{}) {
 	t.m[key] = val
 	t.has[key] = true
 }
 
-func (t TagMap) Get(key string) interface{} {
+func (t *TagMap) Get(key string) interface{} {
 	return t.m[key]
 }
 
-func (t TagMap) GetInt(key string) (int, error) {
+func (t *TagMap) GetInt(key string) (int, error) {
 	if !t.Has(key) {
 		return 0, errors.New("Key does not exist in tag")
 	}
 	return t.Get(key).(int), nil
 }
 
-func (t TagMap) GetString(key string) (string, error) {
+func (t *TagMap) GetString(key string) (string, error) {
 	if !t.Has(key) {
 		return "", errors.New("Key does not exist in tag")
 	}
@@ -98,10 +99,62 @@ func parseTags(sf reflect.StructField) (*TagMap, error) {
 				return nil, errors.New("Missing required tag data. Expecting key:val")
 			}
 			ret.Set(tokens[0], tokens[1])
+		case "value":
+			if len(tokens) != 2 {
+				return nil, errors.New("Missing required tag data. Expecting key:val")
+			}
+			ret.Set(tokens[0], tokens[1])
+		case "dynamic":
+			if len(tokens) != 3 {
+				return nil, errors.New("Missing required tag data. Expecting key:val:minLen")
+			}
+			ret.Set(tokens[0], tokens[1]+":"+tokens[2])
 		}
 	}
 
 	return ret, nil
+}
+
+// 获取字段返回值
+func getFieldValueByName(fieldName string, meta *Metadata) (uint64, error) {
+	if meta == nil || meta.Parent == nil || meta.Lens == nil {
+		return 0, errors.New("Cannot determine field value. Missing required metadata")
+	}
+
+	if val, err := meta.Tags.GetInt(fieldName); err == nil {
+		return uint64(val), nil
+	}
+
+	parentvf := reflect.Indirect(reflect.ValueOf(meta.Parent))
+
+	field := parentvf.FieldByName(fieldName)
+
+	if !field.IsValid() {
+		return 0, fmt.Errorf("Field %s is not valid or does not exist in the struct", fieldName)
+	}
+	if !field.CanInterface() {
+		return 0, fmt.Errorf("Field %s is not exported and cannot be accessed via reflection", fieldName)
+	}
+
+	switch field.Kind() {
+	case reflect.Slice, reflect.Array:
+		switch field.Type().Elem().Kind() {
+		case reflect.Uint8:
+			return uint64(field.Len()), nil
+		default:
+			return 0, errors.New("Cannot get the length of an unknown slice type for " + fieldName)
+		}
+	case reflect.Uint8:
+		return field.Uint(), nil
+	case reflect.Uint16:
+		return field.Uint(), nil
+	case reflect.Uint32:
+		return field.Uint(), nil
+	case reflect.Uint64:
+		return field.Uint(), nil
+	default:
+		return uint64(util.SizeOfStruct(field.Interface())), nil
+	}
 }
 
 func getOffsetByFieldName(fieldName string, meta *Metadata) (uint64, error) {
@@ -499,7 +552,7 @@ func unmarshal(buf []byte, v interface{}, meta *Metadata) (interface{}, error) {
 		switch typev.Elem().Kind() {
 		case reflect.Uint8:
 			var str string
-			var count uint64
+			var count, value, tagValue, minLen uint64
 			var length, offset int
 			var err error
 			if meta.Tags.Has("fixed") {
@@ -518,6 +571,50 @@ func unmarshal(buf []byte, v interface{}, meta *Metadata) (interface{}, error) {
 					return nil, err
 				}
 				meta.CurrOffset += count
+			} else if meta.Tags.Has("value") {
+				str, err = meta.Tags.GetString("value")
+				if err != nil {
+					return nil, err
+				}
+				value, err = getFieldValueByName(str, meta)
+				if err != nil {
+					return nil, err
+				}
+				meta.CurrOffset += value
+			} else if meta != nil && meta.Tags.Has("dynamic") {
+				dynamicTag, err := meta.Tags.GetString("dynamic")
+				if err != nil {
+					return nil, err
+				}
+				dynamicTokens := strings.Split(dynamicTag, ":")
+				if len(dynamicTokens) != 2 {
+					return nil, errors.New("Invalid dynamic tag format. Expecting key:val:minLen")
+				}
+
+				// 获取动态标签的值和最小长度
+				tagValue, err = getFieldValueByName(dynamicTokens[0], meta)
+				if err != nil {
+					return nil, err
+				}
+				minLen, err = strconv.ParseUint(dynamicTokens[1], 10, 64)
+				if err != nil {
+					return nil, err
+				}
+				// TODO 有的时候数值超出，暂未找到原因
+				//fmt.Println("tagValue:", tagValue)
+				//if tagValue > 100 {
+				//	tagValue = 0
+				//}
+				// 判断动态标签的值小于最小长度
+				if tagValue < minLen {
+					length = 4
+				} else {
+					// 判断tagValue是否能被4整除
+					for tagValue%4 != 0 {
+						tagValue++
+					}
+					length = int(tagValue)
+				}
 			} else {
 				if val, ok := meta.Lens[meta.CurrField]; ok {
 					length = int(val)
@@ -535,12 +632,59 @@ func unmarshal(buf []byte, v interface{}, meta *Metadata) (interface{}, error) {
 				// Variable length data fields do NOT advance current offset.
 			}
 			data := make([]byte, length)
-			if err := binary.Read(r, binary.LittleEndian, &data); err != nil {
+			if err = binary.Read(r, binary.LittleEndian, &data); err != nil {
 				return nil, err
 			}
 			return data, nil
 		case reflect.Uint16:
 			return errors.New("Unmarshal not implemented for slice kind:" + typev.Kind().String()), nil
+		case reflect.Struct:
+			// 处理 struct 类型字段
+			var parsedSlice interface{}
+
+			if meta.Tags.Has("value") {
+				str, err := meta.Tags.GetString("value")
+				if err != nil {
+					return nil, err
+				}
+				count, err := getFieldValueByName(str, meta)
+				if err != nil {
+					return nil, err
+				}
+
+				// 创建一个切片以保存解析的子结构体
+				sliceValue := reflect.MakeSlice(typev, int(count), int(count))
+
+				for i := 0; i < int(count); i++ {
+					// 在每次循环迭代开始时，将 meta.CurrOffset 设置为正确的偏移量
+					elemOffset := meta.CurrOffset
+					elemValue := reflect.New(typev.Elem()).Elem()
+
+					// 使用新的缓冲区递归解析子结构体
+					elem, err := unmarshal(meta.ParentBuf[elemOffset:], elemValue.Addr().Interface(), meta)
+					if err != nil {
+						// 发生错误时，存储已解析的部分并继续
+						parsedSlice = sliceValue.Interface()
+						break
+					}
+
+					// 获取当前元素的长度
+					elemSize := util.SizeOfStruct(elem)
+					// 更新偏移量，使其指向下一个元素的位置
+					meta.CurrOffset = elemOffset + uint64(elemSize)
+
+					// 设置解析的子结构体到切片中
+					sliceValue.Index(i).Set(reflect.ValueOf(elem))
+				}
+
+				// 如果解析部分成功，返回解析的切片
+				if parsedSlice != nil {
+					return parsedSlice, nil
+				}
+
+				// 在循环结束后返回完整解析的切片
+				return sliceValue.Interface(), nil
+			}
 		}
 	default:
 		return errors.New("Unmarshal not implemented for kind:" + typev.Kind().String()), nil

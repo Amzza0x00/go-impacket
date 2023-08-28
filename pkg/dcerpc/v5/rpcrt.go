@@ -49,11 +49,58 @@ type MSRPCBindStruct struct {
 	MSRPCHeaderStruct
 	MaxXmitFrag uint16 //4字节，发送大小协商
 	MaxRecvFrag uint16 //4字节，接收大小协商
-	AssocGroup  uint32
+	AssocGroup  uint32 //客户端绑定服务端关联组
 	NumCtxItems uint8
 	Reserved    uint8
 	Reserved2   uint16
 	CtxItems    []CtxItemStruct //多个对象
+}
+
+// 带认证的函数绑定请求结构
+type MSRPCAuthByNTLMSSPBindStruct struct {
+	MSRPCHeaderStruct
+	MaxXmitFrag uint16
+	MaxRecvFrag uint16
+	AssocGroup  uint32
+	NumCtxItems uint8
+	Reserved    uint8
+	Reserved2   uint16
+	CtxItems    []CtxItemStruct
+	AuthInfo    AuthInfoByNTLMSSPStruct
+}
+
+type AuthInfoByNTLMSSPStruct struct {
+	AuthType                  uint8
+	AuthLevel                 uint8
+	AuthPadLen                uint8
+	AuthRsrvd                 uint8
+	AuthContextID             uint32
+	NTLMSecureServiceProvider NTLMSecureServiceProviderStruct // 俩种认证方式，ntlm、kerberos
+}
+
+// ntlm ssp
+type NTLMSecureServiceProviderStruct struct {
+	NTLMSSPIdentifier       []byte `smb:"fixed:8"`
+	NTLMMessageType         uint32
+	NegotiateFlags          uint32
+	DomainNameLen           uint16 //`smb:"len:DomainName"`
+	DomainNameMaxLen        uint16 //`smb:"len:DomainName"`
+	DomainNameBufferOffset  uint32 //`smb:"offset:DomainName"` // 从NEGOTIATE_MESSAGE的开头到DomainName中的偏移量
+	WorkstationLen          uint16 //`smb:"len:Workstation"`
+	WorkstationMaxLen       uint16 //`smb:"len:Workstation"`
+	WorkstationBufferOffset uint32 //`smb:"offset:WorkstationName"` // 从NEGOTIATE_MESSAGE的开头到WorkstationName中的偏移量
+	Version                 NTLMVersion
+	WorkstationName         []byte
+	DomainName              []byte
+}
+
+type NTLMVersion struct {
+	MajorVersion        uint8
+	MinorVersion        uint8
+	BuildNumber         uint16
+	Reserved            uint8
+	Reserved2           uint16
+	NTLMCurrentRevision uint8
 }
 
 // 函数绑定响应结构
@@ -117,10 +164,13 @@ const (
 // PDU PacketFlags
 // https://pubs.opengroup.org/onlinepubs/9629399/chap12.htm
 const (
-	PDUFlagReserved_01 = 0x01
-	PDUFlagLastFrag    = 0x02
-	PDUFlagPending     = 0x03
-	PDUFlagFrag        = 0x04
+	//PDUFlagReserved_01 = 0x01
+	FirstFrag = 0x01
+	LastFrag  = 0x02
+	//PDUFlagLastFrag    = 0x02
+	PDUFlagPending = 0x03
+	CancelPending  = 0x04
+	//PDUFlagFrag        = 0x04
 	PDUFlagNoFack      = 0x08
 	PDUFlagMayBe       = 0x10
 	PDUFlagIdemPotent  = 0x20
@@ -187,7 +237,7 @@ func (c *SMBClient) MSRPCBind(treeId uint32, fileId []byte, callId uint32, ctxs 
 }
 
 // tcp->函数绑定
-func (c *TCPClient) MSRPCBind(callId uint32, ctxs []CtxItemStruct) (err error) {
+func (c *TCPClient) MSRPCBind(callId uint32, ctxs []CtxItemStruct) (res MSRPCBindAckStruct, err error) {
 	header := NewMSRPCHeader()
 	header.CallId = callId
 	header.PacketType = PDUBind
@@ -198,6 +248,46 @@ func (c *TCPClient) MSRPCBind(callId uint32, ctxs []CtxItemStruct) (err error) {
 		MaxRecvFrag:       4280,
 		AssocGroup:        0,
 		CtxItems:          ctxs,
+	}
+	bindStruct.NumCtxItems = uint8(len(ctxs))
+	// 重新修改FragLength
+	fragLength := util.SizeOfStruct(bindStruct)
+	bindStruct.FragLength = uint16(fragLength)
+	c.Debug("Sending rpc bind", nil)
+	buf, err := c.TCPSend(bindStruct)
+	res = NewMSRPCBindAck()
+	c.Debug("Unmarshalling rpc bind", nil)
+	if err = encoder.Unmarshal(buf, &res); err != nil {
+		c.Debug("Raw:\n"+hex.Dump(buf), err)
+	}
+	if res.NumResults < 1 {
+		return MSRPCBindAckStruct{}, errors.New("Failed to rpc bind")
+	}
+	c.Debug("Completed rpc bind", nil)
+	return res, err
+}
+
+// 带认证场景的msrpc绑定
+func (c *TCPClient) MSRPCAuthBind(callId uint32, ctxs []CtxItemStruct, auth AuthInfoByNTLMSSPStruct, assocGroup uint32, domainNameLen, workstationNameLen uint16) (err error) {
+	header := NewMSRPCHeader()
+	header.CallId = callId
+	header.PacketType = PDUBind
+	header.PacketFlags = CancelPending | LastFrag | FirstFrag
+	// 修改AuthLength
+	authLength := util.SizeOfStruct(auth.NTLMSecureServiceProvider)
+	header.AuthLength = uint16(authLength)
+	// 计算并、修改domainName、workstationName偏移量
+	domainNameOffset := header.AuthLength - domainNameLen
+	workstationNameOffset := header.AuthLength - domainNameLen - workstationNameLen
+	auth.NTLMSecureServiceProvider.DomainNameBufferOffset = uint32(domainNameOffset)
+	auth.NTLMSecureServiceProvider.WorkstationBufferOffset = uint32(workstationNameOffset)
+	bindStruct := MSRPCAuthByNTLMSSPBindStruct{
+		MSRPCHeaderStruct: header,
+		MaxXmitFrag:       5840,
+		MaxRecvFrag:       5840,
+		AssocGroup:        assocGroup,
+		CtxItems:          ctxs,
+		AuthInfo:          auth,
 	}
 	bindStruct.NumCtxItems = uint8(len(ctxs))
 	// 重新修改FragLength

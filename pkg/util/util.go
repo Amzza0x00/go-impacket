@@ -1,9 +1,11 @@
 package util
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -118,52 +120,78 @@ func DealCIDR(cidr string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 计算IP地址范围的起始和结束
+	startIP := ip.Mask(ipnet.Mask)
+	endIP := make(net.IP, len(startIP))
+	copy(endIP, startIP)
+	for i := range endIP {
+		endIP[i] |= ^ipnet.Mask[i]
+	}
+
 	var ips []string
-	// 在循环里创建的所有函数变量共享相同的变量。
-	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); ip_tools(ip) {
+	// 逐个增加IP地址
+	for ip := startIP; bytes.Compare(ip, endIP) <= 0; ip = nextIP(ip) {
 		ips = append(ips, ip.String())
 	}
-	return ips[1 : len(ips)-1], nil
+
+	return ips, nil
 }
 
-func ip_tools(ip net.IP) {
-	for j := len(ip) - 1; j >= 0; j-- {
-		ip[j]++
-		if ip[j] > 0 {
+// 下一个IP地址
+func nextIP(ip net.IP) net.IP {
+	nextIP := make(net.IP, len(ip))
+	copy(nextIP, ip)
+
+	for i := len(nextIP) - 1; i >= 0; i-- {
+		nextIP[i]++
+		if nextIP[i] > 0 {
 			break
 		}
 	}
+
+	return nextIP
 }
 
 func DealAsterisk(s string) ([]string, error) {
 	i := strings.Count(s, "*")
-
 	switch i {
 	case 1:
-		return DealCIDR(strings.Replace(s, "*", "1", -1) + "/24")
+		return DealCIDR(strings.Replace(s, "*", "0", -1) + "/24")
 	case 2:
-		return DealCIDR(strings.Replace(s, "*", "1", -1) + "/16")
+		return DealCIDR(strings.Replace(s, "*", "0", -1) + "/16")
 	case 3:
-		return DealCIDR(strings.Replace(s, "*", "1", -1) + "/8")
+		return DealCIDR(strings.Replace(s, "*", "0", -1) + "/8")
+	default:
+		return nil, errors.New("invalid Asterisk format")
 	}
-
-	return nil, errors.New("wrong Asterisk")
 }
 
 func DealHyphen(s string) ([]string, error) {
 	tmp := strings.Split(s, ".")
-	if len(tmp) == 4 {
-		iprange_tmp := strings.Split(tmp[3], "-")
-		var ips []string
-		tail, _ := strconv.Atoi(iprange_tmp[1])
-		for head, _ := strconv.Atoi(iprange_tmp[0]); head <= tail; head++ {
-			ips = append(ips, tmp[0]+"."+tmp[1]+"."+tmp[2]+"."+strconv.Itoa(head))
-		}
-		return ips, nil
-	} else {
-		return nil, errors.New("Wrong string")
+	if len(tmp) != 4 {
+		return nil, errors.New("invalid IP range format")
 	}
-
+	iprange_tmp := strings.Split(tmp[3], "-")
+	if len(iprange_tmp) != 2 {
+		return nil, errors.New("invalid IP range format")
+	}
+	head, err := strconv.Atoi(iprange_tmp[0])
+	if err != nil {
+		return nil, err
+	}
+	tail, err := strconv.Atoi(iprange_tmp[1])
+	if err != nil {
+		return nil, err
+	}
+	if head < 0 || head > 255 || tail < 0 || tail > 255 || head > tail {
+		return nil, errors.New("invalid IP range")
+	}
+	var ips []string
+	for i := head; i <= tail; i++ {
+		ips = append(ips, tmp[0]+"."+tmp[1]+"."+tmp[2]+"."+strconv.Itoa(i))
+	}
+	return ips, nil
 }
 
 func IpParse(s string) ([]string, error) {
@@ -174,26 +202,30 @@ func IpParse(s string) ([]string, error) {
 			// 192.168.0.*
 			ips_tmp, err := DealAsterisk(ipStrings[i])
 			if err != nil {
-				return nil, nil
+				return nil, err
 			}
 			ips = append(ips, ips_tmp...)
 		} else if strings.Contains(ipStrings[i], "/") {
 			// 192.168.0.1/24
 			ips_tmp, err := DealCIDR(ipStrings[i])
 			if err != nil {
-				return nil, nil
+				return nil, err
 			}
 			ips = append(ips, ips_tmp...)
 		} else if strings.Contains(ipStrings[i], "-") {
 			// 192.668.0.1-255
 			ips_tmp, err := DealHyphen(ipStrings[i])
 			if err != nil {
-				return nil, nil
+				return nil, err
 			}
 			ips = append(ips, ips_tmp...)
 		} else {
-			// singel ip
-			ips = append(ips, ipStrings[i])
+			// single ip
+			if net.ParseIP(ipStrings[i]) != nil {
+				ips = append(ips, ipStrings[i])
+			} else {
+				return nil, fmt.Errorf("invalid IP address: %s", ipStrings[i])
+			}
 		}
 	}
 	return ips, nil

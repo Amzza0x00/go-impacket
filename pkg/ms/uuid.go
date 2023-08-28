@@ -15,6 +15,9 @@ const (
 	NDR_VERSION                      = 2
 	Time_Feature_Negotiation_UUID    = "6cb71c2c-9812-4540-0300-000000000000"
 	Time_Feature_Negotiation_VERSION = 1
+	// epmapper接口
+	EPMv4_UUID    = "e1af8308-5d1f-11c9-91a4-08002b14a0fa"
+	EPMv4_VERSION = 3
 )
 
 var UUIDMap = map[string]string{

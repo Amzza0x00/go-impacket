@@ -23,11 +23,11 @@ func NewNegotiate(domainName, workstation string) Negotiate {
 		NegotiateFlags: FlgNeg56 |
 			FlgNeg128 |
 			FlgNegTargetInfo |
-			FlgNegExtendedSessionSecurity |
+			FlgNegExtendedSecurity |
 			FlgNegOEMDomainSupplied |
-			FlgNegNTLM |
-			FlgNegRequestTarget |
-			FlgNegUnicode,
+			FlgNegNTLMKey |
+			FlgRequestTarget |
+			FlgNegUNICODE,
 		DomainNameLen:           0,
 		DomainNameMaxLen:        0,
 		DomainNameBufferOffset:  0,
@@ -53,11 +53,11 @@ func NewChallenge() Challenge {
 			FlgNeg128 |
 			FlgNegVersion |
 			FlgNegTargetInfo |
-			FlgNegExtendedSessionSecurity |
-			FlgNegTargetTypeServer |
-			FlgNegNTLM |
-			FlgNegRequestTarget |
-			FlgNegUnicode,
+			FlgNegExtendedSecurity |
+			FlgTypeServer |
+			FlgNegNTLMKey |
+			FlgRequestTarget |
+			FlgNegUNICODE,
 		ServerChallenge:        0,
 		Reserved:               0,
 		TargetInfoLen:          0,
@@ -127,10 +127,10 @@ func newAuthenticate(h hash.Hash, domain, user, workstation string, c Challenge)
 		NegotiateFlags: FlgNeg56 |
 			FlgNeg128 |
 			FlgNegTargetInfo |
-			FlgNegExtendedSessionSecurity |
-			FlgNegNTLM |
-			FlgNegRequestTarget |
-			FlgNegUnicode,
+			FlgNegExtendedSecurity |
+			FlgNegNTLMKey |
+			FlgRequestTarget |
+			FlgNegUNICODE,
 		NtChallengeResponse:       ntChallengeResponse,
 		LmChallengeResponse:       lmChallengeResponse,
 		EncryptedRandomSessionKey: sessionBaseKey,

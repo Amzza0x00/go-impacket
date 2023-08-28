@@ -35,6 +35,7 @@ func NewTCPSession(opt common.ClientOptions, debug bool) (client *TCPClient, err
 	return client, nil
 }
 
+// ncacn_ip_tcp
 func TCPTransport() (client *TCPClient, err error) {
 	return &TCPClient{}, nil
 }
